@@ -19,7 +19,7 @@
     <div class="grid md:grid-cols-2 gap-8 items-stretch">
         
         <!-- Recorder / Upload Card -->
-        <div class="glass-premium p-8 relative overflow-hidden" data-aos="fade-right">
+        <div class="glass-premium p-8 pb-32 relative" data-aos="fade-right">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-warm-teal to-transparent"></div>
             
             <h2 class="text-xl font-bold text-warm-dark mb-6 flex items-center gap-2">
@@ -27,76 +27,274 @@
                 Record or Upload
             </h2>
             
-            <form action="/cry" method="POST" enctype="multipart/form-data" class="h-full flex flex-col">
-                <div class="relative group flex-grow">
-                    <input type="file" name="audio" id="fileInput" accept=".wav,.mp3,.3gp,.m4a" 
-                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                           onchange="updateFileName()">
-                    
-                    <div class="border-2 border-dashed border-warm-teal/30 rounded-2xl h-48 flex flex-col items-center justify-center bg-white/40 group-hover:bg-teal-50/50 group-hover:border-warm-teal transition-all duration-300 relative overflow-hidden">
-                        <!-- Animated Rings (Visual Only) -->
-                        <div class="absolute w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                            <div class="w-20 h-20 border border-warm-teal/20 rounded-full absolute animate-ping"></div>
-                            <div class="w-32 h-32 border border-warm-teal/10 rounded-full absolute animate-pulse"></div>
-                        </div>
-
-                        <div class="w-16 h-16 rounded-full bg-warm-teal text-white flex items-center justify-center text-3xl mb-3 shadow-lg relative z-10 group-hover:scale-110 transition-transform">
-                            🎙️
-                        </div>
-                        <p id="fileNameDisplay" class="font-bold text-warm-gray text-sm relative z-10">Tap to upload audio</p>
-                    </div>
+            <form action="/cry" method="POST" enctype="multipart/form-data" class="h-full flex flex-col" id="cry-analysis-form">
+                
+                <!-- Toggle Mode -->
+                <div class="flex gap-2 mb-4 bg-white/50 p-1 rounded-xl">
+                    <button type="button" onclick="setMode('upload')" id="btn-mode-upload" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-warm-teal">Upload File</button>
+                    <button type="button" onclick="setMode('record')" id="btn-mode-record" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all text-warm-gray hover:bg-white/50">Record Mic</button>
                 </div>
 
-                <button class="mt-8 w-full btn-primary py-4 text-lg justify-center shadow-xl hover:shadow-2xl">
+                <!-- Input Area -->
+                <div class="relative group flex-grow h-48">
+                    
+                    <!-- File Upload Mode -->
+                    <div id="mode-upload" class="absolute inset-0 w-full h-full">
+                         <input type="file" name="audio" id="fileInput" accept=".wav,.mp3,.3gp,.m4a,.webm" 
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                               onchange="updateFileName()">
+                        
+                        <div class="border-2 border-dashed border-warm-teal/30 rounded-2xl h-full flex flex-col items-center justify-center bg-white/40 group-hover:bg-teal-50/50 group-hover:border-warm-teal transition-all duration-300 relative overflow-hidden">
+                            <div class="w-16 h-16 rounded-full bg-warm-teal text-white flex items-center justify-center text-3xl mb-3 shadow-lg group-hover:scale-110 transition-transform">
+                                📁
+                            </div>
+                            <p id="fileNameDisplay" class="font-bold text-warm-gray text-sm px-4 text-center">Tap to select audio file</p>
+                        </div>
+                    </div>
+
+                    <!-- Record Mode -->
+                    <div id="mode-record" class="hidden absolute inset-0 w-full h-full flex flex-col">
+                        <div class="border-2 border-warm-teal/30 rounded-2xl h-full flex flex-col items-center justify-center bg-white/40 relative overflow-hidden">
+                            
+                            <!-- Visualizer -->
+                            <div id="recording-visual" class="hidden absolute inset-0 flex items-center justify-center gap-1 opacity-50">
+                                <div class="w-2 h-8 bg-warm-coral animate-pulse"></div>
+                                <div class="w-2 h-12 bg-warm-coral animate-pulse delay-75"></div>
+                                <div class="w-2 h-6 bg-warm-coral animate-pulse delay-150"></div>
+                                <div class="w-2 h-10 bg-warm-coral animate-pulse delay-100"></div>
+                                <div class="w-2 h-6 bg-warm-coral animate-pulse delay-200"></div>
+                            </div>
+
+                            <button type="button" id="recordBtn" onclick="toggleRecording()" 
+                                    class="w-20 h-20 rounded-full bg-red-500 text-white flex items-center justify-center text-3xl shadow-lg hover:scale-105 transition-transform z-10 border-4 border-red-100">
+                                🎙️
+                            </button>
+                            <p id="recordStatus" class="font-bold text-warm-gray text-sm mt-4 z-10">Tap to Start Recording</p>
+                            <p id="timer" class="text-xs text-warm-coral font-mono mt-1 hidden">00:00</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <button type="submit" class="mt-8 w-full btn-primary py-4 text-lg justify-center shadow-xl hover:shadow-2xl relative z-30">
                     <span class="animate-pulse mr-2">🔍</span> Analyze Sound
                 </button>
             </form>
         </div>
 
         <!-- Results Card -->
-        <div class="glass-premium p-8 bg-gradient-to-b from-white/70 to-white/40" data-aos="fade-left">
+        <div id="result-container" class="glass-premium p-8 bg-gradient-to-b from-white/70 to-white/40" data-aos="fade-left">
              <h2 class="text-xl font-bold text-warm-dark mb-6 flex items-center gap-2">
                 <span class="w-8 h-8 rounded-full bg-warm-yellow text-white flex items-center justify-center text-sm shadow-md">2</span>
                 Analysis Results
             </h2>
 
-            {% if prediction %}
-                <div class="text-center py-4">
-                    <div class="inline-block p-6 rounded-full bg-white shadow-lg mb-6 animate-bounce">
-                        <span class="text-6xl">
-                            {% if prediction == 'Hunger' %}🍼{% elif prediction == 'Pain' %}🩹{% elif prediction == 'Burping' %}🫧{% elif prediction == 'Discomfort' %}🧸{% else %}🌙{% endif %}
-                        </span>
-                    </div>
-                    
-                    <h3 class="text-3xl font-display font-extrabold text-warm-dark mb-1">{{ prediction }}</h3>
-                    <div class="inline-block px-3 py-1 bg-gray-100 rounded-full text-xs font-bold text-warm-gray mb-6">
-                        Confidence: <span class="text-warm-teal">{{ confidence }}%</span>
-                    </div>
-                    
-                    <div class="bg-blue-50/80 border border-blue-100 p-5 rounded-2xl text-left shadow-sm">
-                        <p class="text-xs font-bold text-blue-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            💡 Parenting Tip
-                        </p>
-                        <p class="text-warm-dark text-sm leading-relaxed">{{ advice }}</p>
-                    </div>
+            <!-- Populated Result (Hidden by default unless rendered or JS shows it) -->
+            <div id="result-content" class="{% if not prediction %}hidden{% endif %} text-center py-4">
+                <div class="inline-block p-6 rounded-full bg-white shadow-lg mb-6 animate-bounce">
+                    <span id="res-icon" class="text-6xl">
+                        {% if prediction == 'Hunger' %}🍼{% elif prediction == 'Pain' %}🩹{% elif prediction == 'Burping' %}🫧{% elif prediction == 'Discomfort' %}🧸{% else %}🌙{% endif %}
+                    </span>
                 </div>
-            {% else %}
-                <div class="h-64 flex flex-col items-center justify-center text-warm-gray/40 border-2 border-dashed border-gray-100 rounded-2xl">
-                    <span class="text-5xl mb-4 grayscale opacity-30">✨</span>
-                    <p class="text-sm">Results will appear here...</p>
+                
+                <h3 id="res-pred" class="text-3xl font-display font-extrabold text-warm-dark mb-1">{{ prediction }}</h3>
+                <div class="inline-block px-3 py-1 bg-gray-100 rounded-full text-xs font-bold text-warm-gray mb-6">
+                    Confidence: <span id="res-conf" class="text-warm-teal">{{ confidence }}%</span>
                 </div>
-            {% endif %}
+                
+                <div class="bg-blue-50/80 border border-blue-100 p-5 rounded-2xl text-left shadow-sm">
+                    <p class="text-xs font-bold text-blue-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        💡 Parenting Tip
+                    </p>
+                    <p id="res-advice" class="text-warm-dark text-sm leading-relaxed">{{ advice }}</p>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="result-content-empty" class="{% if prediction %}hidden{% endif %} h-64 flex flex-col items-center justify-center text-warm-gray/40 border-2 border-dashed border-gray-100 rounded-2xl">
+                <span class="text-5xl mb-4 grayscale opacity-30">✨</span>
+                <p class="text-sm">Results will appear here...</p>
+            </div>
         </div>
 
     </div>
 </div>
 
 <script>
+    // --- UI & AJAX Logic ---
     function updateFileName() {
         const input = document.getElementById('fileInput');
         const display = document.getElementById('fileNameDisplay');
         if (input.files.length > 0) {
             display.innerHTML = '<span class="text-warm-teal">✅ Ready:</span> <br>' + input.files[0].name;
+        }
+    }
+
+    const form = document.querySelector('form');
+    const resultContainer = document.getElementById('result-container');
+    const resultContent = document.getElementById('result-content');
+    const resultContentEmpty = document.getElementById('result-content-empty');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput.files.length === 0) {
+            alert("⚠️ Please upload a file or record audio first!");
+            return;
+        }
+
+        // Show Loading State
+        const btn = form.querySelector('button[type="submit"]');
+        const originalBtnContent = btn.innerHTML;
+        btn.innerHTML = '<span class="animate-spin inline-block mr-2">⏳</span> Analyzing...';
+        btn.disabled = true;
+
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch('/cry', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                alert("Error: " + data.error);
+            } else if (data.success) {
+                // Update UI with Results
+                resultContentEmpty.classList.add('hidden');
+                resultContent.classList.remove('hidden');
+
+                // Map Prediction to Icon
+                const icons = {
+                    "Hunger": "🍼",
+                    "Pain": "🩹",
+                    "Burping": "🫧",
+                    "Discomfort": "🧸",
+                    "Tired": "🌙"
+                };
+                const icon = icons[data.prediction] || "👶";
+
+                document.getElementById('res-icon').innerText = icon;
+                document.getElementById('res-pred').innerText = data.prediction;
+                document.getElementById('res-conf').innerText = data.confidence + "%";
+                document.getElementById('res-advice').innerText = data.advice;
+
+                // Scroll to results using Lenis if available, or native
+                if (typeof lenis !== 'undefined') {
+                    lenis.scrollTo('#result-container', { offset: -100 });
+                } else {
+                    resultContainer.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+
+        } catch (error) {
+            console.error("Error:", error);
+            alert("An unexpected error occurred.");
+        } finally {
+            // Reset Button
+            btn.innerHTML = originalBtnContent;
+            btn.disabled = false;
+        }
+    });
+
+
+    // --- Recording Logic ---
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+    let timerInterval;
+    let startTime;
+
+    function setMode(mode) {
+        // Toggle UI
+        const uploadDiv = document.getElementById('mode-upload');
+        const recordDiv = document.getElementById('mode-record');
+        const btnUpload = document.getElementById('btn-mode-upload');
+        const btnRecord = document.getElementById('btn-mode-record');
+
+        if (mode === 'upload') {
+            uploadDiv.classList.remove('hidden');
+            recordDiv.classList.add('hidden');
+            
+            btnUpload.className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-warm-teal";
+            btnRecord.className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all text-warm-gray hover:bg-white/50";
+        } else {
+            uploadDiv.classList.add('hidden');
+            recordDiv.classList.remove('hidden');
+
+            btnRecord.className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-warm-teal";
+            btnUpload.className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all text-warm-gray hover:bg-white/50";
+        }
+    }
+
+    async function toggleRecording() {
+        const btn = document.getElementById('recordBtn');
+        const status = document.getElementById('recordStatus');
+        const visual = document.getElementById('recording-visual');
+        const timer = document.getElementById('timer');
+
+        if (!isRecording) {
+            // START Recording
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const options = { mimeType: 'audio/webm' };
+                mediaRecorder = new MediaRecorder(stream, options);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioFile = new File([audioBlob], "recorded_cry.webm", { type: "audio/webm" });
+                    
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(audioFile);
+                    document.getElementById('fileInput').files = dataTransfer.files;
+
+                    status.innerHTML = "<span class='text-warm-teal'>✅ Recorded!</span> Click Analyze Below";
+                    btn.classList.remove('animate-pulse');
+                    visual.classList.add('hidden');
+                    clearInterval(timerInterval);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                
+                btn.innerHTML = "⬛"; 
+                btn.classList.add('animate-pulse', 'bg-warm-dark');
+                btn.classList.remove('bg-red-500');
+                status.innerText = "Recording...";
+                visual.classList.remove('hidden');
+                timer.classList.remove('hidden');
+                
+                startTime = Date.now();
+                timerInterval = setInterval(() => {
+                    const diff =  Date.now() - startTime;
+                    const secs = Math.floor(diff / 1000);
+                    const mins = Math.floor(secs / 60);
+                    timer.innerText = `${mins.toString().padStart(2, '0')}:${(secs%60).toString().padStart(2, '0')}`;
+                }, 1000);
+
+            } catch (err) {
+                console.error("Mic Error:", err);
+                alert("Could not access microphone: " + err.message);
+            }
+        } else {
+            // STOP Recording
+            mediaRecorder.stop();
+            isRecording = false;
+
+            btn.innerHTML = "🎙️";
+            btn.classList.remove('animate-pulse', 'bg-warm-dark');
+            btn.classList.add('bg-red-500');
+            timer.classList.add('hidden');
+            
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
         }
     }
 </script>

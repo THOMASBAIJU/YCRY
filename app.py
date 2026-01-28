@@ -6,7 +6,7 @@ import librosa.display
 import matplotlib
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 import database as db
@@ -303,16 +303,15 @@ def cry():
             path = os.path.join(app.config['UPLOAD_FOLDER'], "temp.wav")
             f.save(path)
             try:
-                # Clear any existing plots to prevent memory leaks
+                # Clear any existing plots
                 plt.close('all')
                 
-                # Load audio - wrapping in broad try/except for librosa stability
+                # Load audio
                 try:
                     y, sr = librosa.load(path, sr=22050, duration=5)
                 except Exception as librosa_error:
                     print(f"❌ Librosa Load Error: {librosa_error}")
-                    flash("Error reading audio file. Please try a different format (WAV/MP3).")
-                    return render_template('cry.html', prediction=None, confidence=0, advice="")
+                    return {"error": "Error reading audio file. Please try a different format (WAV/MP3)."}, 400
 
                 fig = plt.figure(figsize=(4, 4))
                 librosa.display.specshow(librosa.power_to_db(librosa.feature.melspectrogram(y=y, sr=sr), ref=np.max), sr=sr)
@@ -321,27 +320,36 @@ def cry():
                 img_path = os.path.join(app.config['UPLOAD_FOLDER'], "temp_spec.png")
                 plt.savefig(img_path, bbox_inches='tight', pad_inches=0)
                 plt.close(fig)
-                plt.close('all') # Double ensure
+                plt.close('all')
 
                 img = image.img_to_array(image.load_img(img_path, target_size=(64, 64))) / 255.0
                 
                 if ai_model:
                     probs = ai_model.predict(np.expand_dims(img, axis=0))[0]
                     classes = ["Burping", "Discomfort", "Hunger", "Pain", "Tired"]
-                    pred = classes[np.argmax(probs)]
-                    conf = round(np.max(probs) * 100, 1)
+                    # Explicit type casting for JSON serialization
+                    pred = str(classes[np.argmax(probs)])
+                    conf_val = float(np.max(probs) * 100)
+                    conf = f"{conf_val:.1f}"
                     advice = {"Hunger": "Feed baby", "Pain": "Check injury", "Burping": "Burp baby", "Discomfort": "Check diaper", "Tired": "Sleep time"}.get(pred, "Check baby")
+                    
+                    # RETURN JSON
+                    return jsonify({
+                        "prediction": pred,
+                        "confidence": conf,
+                        "advice": advice,
+                        "success": True
+                    })
                 else:
-                    flash("AI Model not loaded. Please contact admin.")
+                    return jsonify({"error": "AI Model not loaded."}), 500
 
             except Exception as e:
                 print(f"❌ Cry Analysis Error: {e}")
-                import traceback
-                traceback.print_exc()
-                flash(f"Analysis failed: {str(e)}")
+                return jsonify({"error": str(e)}), 500
             finally:
-                plt.close('all') # Cleanup
-    return render_template('cry.html', prediction=pred, confidence=conf, advice=advice)
+                plt.close('all')
+    
+    return render_template('cry.html', prediction=None, confidence=0, advice="")
 
 @app.route('/vaccine', methods=['GET', 'POST'])
 def vaccine():
@@ -398,6 +406,96 @@ def growth():
                            dates=chart_dates,
                            weights=chart_weights,
                            heights=chart_heights)
+@app.route('/nutrition')
+def nutrition():
+    if 'user' not in session: return redirect(url_for('login'))
+    prof = db.get_profile(session['user'])
+    if not prof: return redirect(url_for('profile'))
+    
+    age_months = calculate_age(prof[2])
+    guide = get_nutrition_guide(age_months)
+    return render_template('nutrition.html', guide=guide, age=age_months, baby_name=prof[1])
+
+@app.route('/exercises')
+def exercises():
+    if 'user' not in session: return redirect(url_for('login'))
+    prof = db.get_profile(session['user'])
+    if not prof: return redirect(url_for('profile'))
+    
+    age_months = calculate_age(prof[2])
+    exercises_list = get_exercises(age_months)
+    return render_template('exercises.html', exercises=exercises_list, age=age_months, baby_name=prof[1])
+
+@app.route('/health')
+def health():
+    if 'user' not in session: return redirect(url_for('login'))
+    prof = db.get_profile(session['user'])
+    if not prof: return redirect(url_for('profile'))
+    
+    warnings = get_warning_signs()
+    return render_template('health.html', warnings=warnings, baby_name=prof[1])
+
+# --- NEW HELPERS ---
+def get_nutrition_guide(age):
+    if age < 6:
+        return {
+            "title": "0-6 Months: Milk Only",
+            "allowed": ["Breast Milk", "Infant Formula"],
+            "avoid": ["Water", "Honey", "Cow's Milk", "Solid Food"],
+            "schedule": "On demand (every 2-3 hours)"
+        }
+    elif age < 8:
+        return {
+            "title": "6-8 Months: First Tastes",
+            "allowed": ["Pureed Vegetables (Carrot, Sweet Potato)", "Iron-fortified Cereal", "Mashed Banana"],
+            "avoid": ["Honey", "Salt", "Sugar", "Whole Nuts"],
+            "schedule": "Milk + 1-2 small meals"
+        }
+    elif age < 10:
+        return {
+            "title": "8-10 Months: Textured Food",
+            "allowed": ["Mashed Fruits", "Soft Cooked Pasta", "Yogurt", "Scrambled Egg Yolk"],
+            "avoid": ["Honey", "Raw Apple slices (choking hazard)"],
+            "schedule": "Milk + 2-3 meals"
+        }
+    else:
+        return {
+            "title": "10-12+ Months: Table Food",
+            "allowed": ["Finger Foods", "Small pieces of Chicken", "Cheese", "Most Family Foods"],
+            "avoid": ["Honey (until 1yr)", "Large chunks"],
+            "schedule": "3 meals + 2 snacks"
+        }
+
+def get_exercises(age):
+    if age < 3:
+        return [
+            {"name": "Tummy Time", "desc": "Place baby on stomach while awake.", "benefit": "Strengthens neck & shoulders", "video_id": "bq0S_nulAyk"},
+            {"name": "Visual Tracking", "desc": "Move a toy slowly side-to-side.", "benefit": "Improves eye coordination", "video_id": "k3Y0f24aI74"}
+        ]
+    elif age < 6:
+        return [
+            {"name": "Supported Sit", "desc": "Prop baby up with pillows.", "benefit": "Core strength", "video_id": "_WwlTvU1DOs"},
+            {"name": "Reach & Grab", "desc": "Hold toy just out of reach.", "benefit": "Hand-eye coordination", "video_id": "p4vW9K2E138"}
+        ]
+    elif age < 9:
+        return [
+            {"name": "Peek-a-Boo", "desc": "Hide face behind hands/cloth.", "benefit": "Object permanence", "video_id": "8PIGK9l8K1c"}, 
+            {"name": "Obstacle Course", "desc": "Pillows on floor to crawl over.", "benefit": "Motor skills", "video_id": "T050VqC69Qk"}
+        ]
+    else: # 9-12+
+        return [
+            {"name": "Cruising", "desc": "Place toys on sofa to encourage standing.", "benefit": "Leg strength for walking", "video_id": "T050VqC69Qk"},
+            {"name": "Stacking Blocks", "desc": "Build simple towers.", "benefit": "Fine motor skills", "video_id": "8PIGK9l8K1c"}
+        ]
+
+def get_warning_signs():
+    return [
+        {"symptom": "High Fever", "desc": "Rectal temp > 100.4°F (38°C) if < 3 months.", "action": "Call Doctor Immediately"},
+        {"symptom": "Dehydration", "desc": "No wet diaper for 6+ hours, dry lips.", "action": "Hydrate & Seek Help"},
+        {"symptom": "Breathing Trouble", "desc": "Fast breathing, ribs sucking in.", "action": "Emergency Room"},
+        {"symptom": "Persistent Vomiting", "desc": "Vomiting for more than 12 hours.", "action": "Consult Pediatrician"},
+        {"symptom": "Unusual Rash", "desc": "Rash that doesn't fade when pressed.", "action": "Urgent Care"}
+    ]
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=False)

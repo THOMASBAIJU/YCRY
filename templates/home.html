@@ -41,7 +41,7 @@
             <div class="relative z-10 animate-float">
                 <img src="{{ url_for('static', filename='images/hero_baby.png') }}" 
                      alt="Happy Baby" 
-                     class="w-full h-auto rounded-[3rem] shadow-2xl mask-squircle-ish border-4 border-white/50 object-cover aspect-[4/5]">
+                     class="w-full max-w-md mx-auto h-auto rounded-[3rem] shadow-2xl mask-squircle-ish border-4 border-white/50 object-cover aspect-[4/5]">
                 
                 <!-- Floating Badge -->
                 <div class="absolute -bottom-10 -left-10 glass-premium p-4 flex items-center gap-4 animate-float-delayed z-20 max-w-xs">
@@ -110,11 +110,49 @@
                     <img src="{{ url_for('static', filename='images/growth_feature.png') }}" 
                          class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Growth">
                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                   
                 </div>
                 <div class="px-4 pb-4">
                     <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Growth Journey</h3>
                     <p class="text-warm-gray text-sm leading-relaxed">Monitor height, weight, and cognitive milestones as your little one grows.</p>
+                </div>
+            </a>
+
+            <!-- Feature 4: Nutrition -->
+            <a href="/nutrition" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="400">
+                <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
+                    <img src="{{ url_for('static', filename='images/nutrition_feature.png') }}" 
+                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Nutrition">
+                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                </div>
+                <div class="px-4 pb-4">
+                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Nutrition Guide</h3>
+                    <p class="text-warm-gray text-sm leading-relaxed">Age-appropriate feeding schedules and food recommendations.</p>
+                </div>
+            </a>
+
+            <!-- Feature 5: Exercises -->
+            <a href="/exercises" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="500">
+                 <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
+                     <img src="{{ url_for('static', filename='images/exercises_feature.png') }}" 
+                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Gym">
+                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                </div>
+                <div class="px-4 pb-4">
+                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Baby Gym</h3>
+                    <p class="text-warm-gray text-sm leading-relaxed">Fun developmental activities to boost motor skills.</p>
+                </div>
+            </a>
+
+            <!-- Feature 6: Health -->
+            <a href="/health" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="600">
+                 <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
+                     <img src="{{ url_for('static', filename='images/health_feature.png') }}" 
+                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Health">
+                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                </div>
+                <div class="px-4 pb-4">
+                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-coral transition-colors">Health Check</h3>
+                    <p class="text-warm-gray text-sm leading-relaxed">Identify warning signs and know when to seek help.</p>
                 </div>
             </a>
         </div>

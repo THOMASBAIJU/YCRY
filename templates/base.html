@@ -37,6 +37,8 @@
     </script>
 </head>
 <body class="bg-warm-cream font-body text-warm-dark min-h-screen flex flex-col relative overflow-x-hidden selection:bg-warm-teal selection:text-white">
+    <!-- Fluid Background Canvas -->
+    <canvas id="bg-canvas"></canvas>
 
     <!-- Antigravity Background Blobs -->
     <div class="blob blob-1"></div>
@@ -50,16 +52,28 @@
                 <!-- Brand -->
                 <a href="/" class="flex items-center gap-2 group">
                     <span class="text-3xl transform group-hover:scale-110 transition duration-300">🧸</span>
-                    <span class="font-display font-extrabold text-2xl tracking-tight text-warm-dark group-hover:text-warm-teal transition-colors">YCRY.AI</span>
+                    <span class="font-display font-extrabold text-2xl tracking-tight text-warm-dark group-hover:text-warm-teal transition-colors">YCRY</span>
                 </a>
 
                 <!-- Desktop Menu -->
                 <div class="hidden md:flex items-center space-x-1">
                     {% if session.get('user') %}
                         <a href="/" class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition">Home</a>
-                        <a href="/cry" class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition">Translator</a>
+                        <a href="/cry" class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition">Cries</a>
                         <a href="/vaccine" class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition">Vaccines</a>
                         <a href="/growth" class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition">Growth</a>
+                        
+                        <!-- Care Dropdown -->
+                        <div class="relative group">
+                            <button class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition flex items-center gap-1">
+                                Care ▾
+                            </button>
+                            <div class="absolute top-full left-0 mt-2 w-48 bg-white rounded-2xl shadow-xl overflow-hidden hidden group-hover:block border border-gray-100">
+                                <a href="/nutrition" class="block px-4 py-3 text-sm font-bold text-warm-gray hover:bg-warm-teal hover:text-white transition">🥕 Nutrition</a>
+                                <a href="/exercises" class="block px-4 py-3 text-sm font-bold text-warm-gray hover:bg-warm-teal hover:text-white transition">🤸‍♂️ Exercises</a>
+                                <a href="/health" class="block px-4 py-3 text-sm font-bold text-warm-gray hover:bg-warm-coral hover:text-white transition">🩺 Health Check</a>
+                            </div>
+                        </div>
                         <a href="/profile" class="ml-2 pl-2 pr-4 py-1.5 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition flex items-center gap-2">
                             {% if navbar_pic %}
                                 <img src="{{ url_for('static', filename='profile_pics/' + navbar_pic) }}" class="w-8 h-8 rounded-full object-cover border-2 border-warm-teal">
@@ -132,5 +146,29 @@
             easing: 'ease-out-cubic'
         });
     </script>
+    <!-- Smooth Scroll (Lenis) -->
+    <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
+    <script>
+        const lenis = new Lenis({
+            duration: 1.2,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            direction: 'vertical',
+            gestureDirection: 'vertical',
+            smooth: true,
+            mouseMultiplier: 1,
+            smoothTouch: false,
+            touchMultiplier: 2,
+        });
+
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+
+        requestAnimationFrame(raf);
+    </script>
+
+    <!-- Fluid Background -->
+    <script src="{{ url_for('static', filename='js/fluid_background.js') }}"></script>
 </body>
 </html>

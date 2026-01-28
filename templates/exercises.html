@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-10" data-aos="fade-up">
+    
+    <!-- Hero Header -->
+    <div class="relative rounded-[2.5rem] overflow-hidden mb-12 h-64 shadow-2xl" data-aos="fade-down">
+         <img src="{{ url_for('static', filename='images/exercises_landing.png') }}" 
+              class="absolute inset-0 w-full h-full object-cover" alt="Exercises">
+         <div class="absolute inset-0 bg-teal-900/40 mix-blend-multiply"></div>
+         <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-white">
+             <h1 class="text-4xl md:text-5xl font-display font-extrabold mb-2 text-shadow">Let's Move! 🤸‍♂️</h1>
+             <p class="text-teal-50 text-lg">Activities for <span class="text-white font-bold">{{ baby_name }}</span> ({{ age }} months)</p>
+         </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8">
+        {% for ex in exercises %}
+        <div class="glass-premium p-8 hover:scale-105 transition-transform duration-300 relative overflow-hidden group">
+            <div class="absolute top-0 left-0 w-2 h-full bg-warm-teal"></div>
+            
+            <div class="mb-4">
+                <h2 class="text-2xl font-bold text-warm-dark group-hover:text-warm-teal transition-colors">{{ ex.name }}</h2>
+                <div class="inline-block px-3 py-1 bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider rounded-full mt-2">
+                    Benefit: {{ ex.benefit }}
+                </div>
+            </div>
+            
+            <p class="text-warm-gray text-lg leading-relaxed">{{ ex.desc }}</p>
+            
+            <div class="mt-6 flex justify-end">
+                <button onclick="openVideo('{{ ex.video_id }}')" class="w-12 h-12 rounded-full bg-warm-teal text-white flex items-center justify-center shadow-lg group-hover:rotate-90 transition-transform hover:bg-teal-600">
+                    ▶
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Daily Goal -->
+    <div class="mt-12 text-center bg-white/40 p-8 rounded-3xl border border-white/50">
+        <h3 class="font-bold text-warm-gray mb-2">Daily Goal</h3>
+        <p class="text-2xl font-display text-warm-dark">Try to do <span class="text-warm-coral">2 activities</span> per day for 5-10 minutes!</p>
+    </div>
+
+    <!-- Video Modal -->
+    <div id="videoModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="relative bg-white rounded-2xl overflow-hidden shadow-2xl w-full max-w-3xl mx-4 transform scale-95 transition-transform duration-300" id="modalContent">
+            <!-- Close Button -->
+            <button onclick="closeVideo()" class="absolute top-4 right-4 z-10 bg-white/20 hover:bg-white/40 text-white rounded-full p-2 backdrop-blur-md transition">
+                ✕
+            </button>
+            
+            <div class="aspect-video w-full">
+                <iframe id="youtubeFrame" class="w-full h-full" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function openVideo(videoId) {
+        if (!videoId) {
+            alert("Video coming soon!");
+            return;
+        }
+        const modal = document.getElementById('videoModal');
+        const modalContent = document.getElementById('modalContent');
+        const frame = document.getElementById('youtubeFrame');
+        
+        frame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        
+        modal.classList.remove('hidden');
+        // Small timeout to allow display:block to apply before opacity transition
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeVideo() {
+        const modal = document.getElementById('videoModal');
+        const modalContent = document.getElementById('modalContent');
+        const frame = document.getElementById('youtubeFrame');
+        
+        modal.classList.add('opacity-0');
+        modalContent.classList.remove('scale-100');
+        modalContent.classList.add('scale-95');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            frame.src = ""; // Stop audio
+        }, 300);
+    }
+
+    // Close on click outside
+    document.getElementById('videoModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeVideo();
+        }
+    });
+</script>
+{% endblock %}
