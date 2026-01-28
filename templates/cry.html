@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    
+    <!-- Header with Image -->
+    <div class="relative rounded-[2.5rem] overflow-hidden mb-12 h-64 shadow-2xl" data-aos="fade-down">
+         <img src="{{ url_for('static', filename='images/cry_landing.png') }}" 
+              class="absolute inset-0 w-full h-full object-cover" alt="Calm Baby">
+         <div class="absolute inset-0 bg-indigo-900/60 mix-blend-multiply"></div>
+         <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+             <h1 class="text-4xl md:text-5xl font-display font-extrabold text-white mb-2 shadow-sm">Cry Translator 🎙️</h1>
+             <p class="text-indigo-100 text-lg max-w-xl">AI-powered analysis to help you understand your baby's needs instantly.</p>
+         </div>
+         <!-- Decorative Blob -->
+         <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-warm-teal blur-3xl opacity-50 animate-pulse-glow"></div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8 items-stretch">
+        
+        <!-- Recorder / Upload Card -->
+        <div class="glass-premium p-8 relative overflow-hidden" data-aos="fade-right">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-warm-teal to-transparent"></div>
+            
+            <h2 class="text-xl font-bold text-warm-dark mb-6 flex items-center gap-2">
+                <span class="w-8 h-8 rounded-full bg-warm-teal text-white flex items-center justify-center text-sm shadow-md">1</span>
+                Record or Upload
+            </h2>
+            
+            <form action="/cry" method="POST" enctype="multipart/form-data" class="h-full flex flex-col">
+                <div class="relative group flex-grow">
+                    <input type="file" name="audio" id="fileInput" accept=".wav,.mp3,.3gp,.m4a" 
+                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                           onchange="updateFileName()">
+                    
+                    <div class="border-2 border-dashed border-warm-teal/30 rounded-2xl h-48 flex flex-col items-center justify-center bg-white/40 group-hover:bg-teal-50/50 group-hover:border-warm-teal transition-all duration-300 relative overflow-hidden">
+                        <!-- Animated Rings (Visual Only) -->
+                        <div class="absolute w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <div class="w-20 h-20 border border-warm-teal/20 rounded-full absolute animate-ping"></div>
+                            <div class="w-32 h-32 border border-warm-teal/10 rounded-full absolute animate-pulse"></div>
+                        </div>
+
+                        <div class="w-16 h-16 rounded-full bg-warm-teal text-white flex items-center justify-center text-3xl mb-3 shadow-lg relative z-10 group-hover:scale-110 transition-transform">
+                            🎙️
+                        </div>
+                        <p id="fileNameDisplay" class="font-bold text-warm-gray text-sm relative z-10">Tap to upload audio</p>
+                    </div>
+                </div>
+
+                <button class="mt-8 w-full btn-primary py-4 text-lg justify-center shadow-xl hover:shadow-2xl">
+                    <span class="animate-pulse mr-2">🔍</span> Analyze Sound
+                </button>
+            </form>
+        </div>
+
+        <!-- Results Card -->
+        <div class="glass-premium p-8 bg-gradient-to-b from-white/70 to-white/40" data-aos="fade-left">
+             <h2 class="text-xl font-bold text-warm-dark mb-6 flex items-center gap-2">
+                <span class="w-8 h-8 rounded-full bg-warm-yellow text-white flex items-center justify-center text-sm shadow-md">2</span>
+                Analysis Results
+            </h2>
+
+            {% if prediction %}
+                <div class="text-center py-4">
+                    <div class="inline-block p-6 rounded-full bg-white shadow-lg mb-6 animate-bounce">
+                        <span class="text-6xl">
+                            {% if prediction == 'Hunger' %}🍼{% elif prediction == 'Pain' %}🩹{% elif prediction == 'Burping' %}🫧{% elif prediction == 'Discomfort' %}🧸{% else %}🌙{% endif %}
+                        </span>
+                    </div>
+                    
+                    <h3 class="text-3xl font-display font-extrabold text-warm-dark mb-1">{{ prediction }}</h3>
+                    <div class="inline-block px-3 py-1 bg-gray-100 rounded-full text-xs font-bold text-warm-gray mb-6">
+                        Confidence: <span class="text-warm-teal">{{ confidence }}%</span>
+                    </div>
+                    
+                    <div class="bg-blue-50/80 border border-blue-100 p-5 rounded-2xl text-left shadow-sm">
+                        <p class="text-xs font-bold text-blue-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                            💡 Parenting Tip
+                        </p>
+                        <p class="text-warm-dark text-sm leading-relaxed">{{ advice }}</p>
+                    </div>
+                </div>
+            {% else %}
+                <div class="h-64 flex flex-col items-center justify-center text-warm-gray/40 border-2 border-dashed border-gray-100 rounded-2xl">
+                    <span class="text-5xl mb-4 grayscale opacity-30">✨</span>
+                    <p class="text-sm">Results will appear here...</p>
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function updateFileName() {
+        const input = document.getElementById('fileInput');
+        const display = document.getElementById('fileNameDisplay');
+        if (input.files.length > 0) {
+            display.innerHTML = '<span class="text-warm-teal">✅ Ready:</span> <br>' + input.files[0].name;
+        }
+    }
+</script>
+{% endblock %}

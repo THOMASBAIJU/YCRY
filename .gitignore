@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# Database
+ycry_users.db
+
+# Virtual Environment
+venv/
+env/
+
+# IDE Settings
+.vscode/
+.idea/
+
+# OS specific
+.DS_Store
+Thumbs.db

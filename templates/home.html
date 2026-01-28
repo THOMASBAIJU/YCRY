@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+    <!-- HERO SECTION -->
+    <div class="grid lg:grid-cols-2 gap-12 items-center mb-24 min-h-[60vh]">
+        
+        <!-- Text Content -->
+        <div data-aos="fade-right">
+            <div class="inline-block px-4 py-2 rounded-full bg-white/50 border border-white/60 mb-6 backdrop-blur-md">
+                <span class="text-sm font-bold text-warm-teal tracking-widest uppercase">✨ AI-Powered Parenting</span>
+            </div>
+            <h1 class="hero-title">
+                From Cry to Comfort, <br>
+            </h1>
+            <p class="text-xl text-warm-gray mb-8 leading-relaxed max-w-lg">
+                YCRY decodes cries, tracks health, and monitors growth using advanced AI, giving you peace of mind 24/7.
+            </p>
+            <div class="flex flex-wrap gap-4">
+                {% if logged_in %}
+                <a href="#features" class="btn-primary text-lg px-8 py-4 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">
+                    <span>Explore Features</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" /></svg>
+                </a>
+                {% else %}
+                <a href="/register" class="btn-primary text-lg px-8 py-4 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">
+                    <span>Get Started Free</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" /></svg>
+                </a>
+                <a href="/login" class="btn-secondary text-lg px-8 py-4">
+                    Sign In
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Float Image -->
+        <div class="relative" data-aos="fade-left">
+            <div class="absolute inset-0 bg-warm-teal/20 blur-[80px] rounded-full animate-pulse-glow"></div>
+            <div class="relative z-10 animate-float">
+                <img src="{{ url_for('static', filename='images/hero_baby.png') }}" 
+                     alt="Happy Baby" 
+                     class="w-full h-auto rounded-[3rem] shadow-2xl mask-squircle-ish border-4 border-white/50 object-cover aspect-[4/5]">
+                
+                <!-- Floating Badge -->
+                <div class="absolute -bottom-10 -left-10 glass-premium p-4 flex items-center gap-4 animate-float-delayed z-20 max-w-xs">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl shadow-sm">
+                        🛡️
+                    </div>
+                    <div>
+                        <p class="font-bold text-warm-dark text-sm">Vaccination Alert</p>
+                        <p class="text-xs text-warm-gray">Upcoming: Polio V3</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRUST STRIP -->
+    <div class="mb-24 text-center opacity-70 grayscale hover:grayscale-0 transition-all duration-700" data-aos="fade-up">
+        <p class="text-xs font-bold tracking-[0.2em] text-warm-gray mb-8 uppercase">Trusted by modern parents everywhere</p>
+        <div class="flex justify-center flex-wrap gap-12 items-center">
+             <h3 class="text-2xl font-display font-bold text-gray-300">MOM<span class="text-gray-400">CO</span></h3>
+             <h3 class="text-2xl font-display font-bold text-gray-300">BABY<span class="text-gray-400">LIST</span></h3>
+             <h3 class="text-2xl font-display font-bold text-gray-300">TOTS<span class="text-gray-400">GUIDE</span></h3>
+             <h3 class="text-2xl font-display font-bold text-gray-300">PARENT<span class="text-gray-400">HOOD</span></h3>
+        </div>
+    </div>
+
+    <!-- FEATURES GRID -->
+    <div class="mb-24" id="features">
+        <div class="text-center mb-16" data-aos="fade-up">
+            <h2 class="text-4xl font-display font-bold text-warm-dark mb-4">Everything you need</h2>
+            <p class="text-warm-gray max-w-2xl mx-auto">From decoding cries to tracking milestones, YCRY acts as your digital parenting assistant.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Feature 1 -->
+            <a href="/cry" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="100">
+                <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
+                    <img src="{{ url_for('static', filename='images/cry_feature.png') }}" 
+                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Crying Baby">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+
+                </div>
+                <div class="px-4 pb-4">
+                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Cry Translator</h3>
+                    <p class="text-warm-gray text-sm leading-relaxed">AI analysis to understand if your baby is hungry, in pain, or just tired.</p>
+                </div>
+            </a>
+
+            <!-- Feature 2 -->
+            <a href="/vaccine" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="200">
+                <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
+                    <img src="{{ url_for('static', filename='images/vaccine_feature.png') }}" 
+                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Vaccine">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                 
+                </div>
+                <div class="px-4 pb-4">
+                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Vaccine Tracker</h3>
+                    <p class="text-warm-gray text-sm leading-relaxed">Never miss a shot. Track immunization schedules and get timely alerts.</p>
+                </div>
+            </a>
+
+            <!-- Feature 3 -->
+            <a href="/growth" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="300">
+                <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
+                    <img src="{{ url_for('static', filename='images/growth_feature.png') }}" 
+                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Growth">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                   
+                </div>
+                <div class="px-4 pb-4">
+                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Growth Journey</h3>
+                    <p class="text-warm-gray text-sm leading-relaxed">Monitor height, weight, and cognitive milestones as your little one grows.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

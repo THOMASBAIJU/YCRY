@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto relative" x-data="{ showEditModal: false }">
+
+    <!-- Cover Photo Profile Header -->
+    <div class="relative mb-24" data-aos="fade-down">
+        <!-- Cover Art -->
+        <div class="h-64 w-full rounded-b-[3rem] overflow-hidden shadow-xl bg-gradient-to-r from-warm-teal to-blue-400 relative group">
+            <img src="{{ url_for('static', filename='images/profile_cover.png') }}" 
+                 class="w-full h-full object-cover opacity-50 mix-blend-overlay transition duration-700 group-hover:scale-105" alt="Cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+            
+            <div class="absolute bottom-6 right-8">
+                 <button onclick="document.getElementById('editModal').classList.remove('hidden')" class="bg-white/90 backdrop-blur text-warm-dark font-bold py-2 px-6 rounded-full shadow-lg hover:scale-105 transition btn-secondary border-none text-xs tracking-widest uppercase">
+                    ✏️ Edit Profile
+                </button>
+            </div>
+        </div>
+
+        <!-- Avatar & Name -->
+        <div class="absolute -bottom-16 left-8 md:left-12 flex items-end gap-6 text-left">
+            <div class="relative group">
+                <div class="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-white">
+                    {% if profile[11] %}
+                        <img src="{{ url_for('static', filename='profile_pics/' + profile[11]) }}" class="w-full h-full object-cover">
+                    {% else %}
+                        <div class="w-full h-full flex items-center justify-center bg-warm-cream text-6xl">👶</div>
+                    {% endif %}
+                </div>
+                <div class="absolute bottom-2 right-2 w-8 h-8 rounded-full border-2 border-white bg-green-400 shadow-md animate-pulse" title="Online"></div>
+            </div>
+            
+            <div class="pb-2 mb-2 bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/40 shadow-lg glass-premium">
+                <h1 class="text-3xl font-display font-extrabold text-warm-dark leading-none mb-1">{{ profile[1] }}</h1>
+                <p class="text-warm-dark font-bold text-sm opacity-80 flex items-center gap-2">
+                    <span>🎂 {{ profile[2] }}</span>
+                    <span class="w-1 h-1 rounded-full bg-warm-gray"></span>
+                    <span>{{ profile[3] }}</span>
+                </p>
+                <div class="mt-2">
+                     <span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm
+                        {% if profile[4] == 'A+' or profile[4] == 'A-' %} bg-purple-100 text-purple-700
+                        {% elif 'B' in profile[4] %} bg-blue-100 text-blue-700
+                        {% else %} bg-pink-100 text-pink-700 {% endif %}">
+                        BLOOD: {{ profile[4] }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid md:grid-cols-3 gap-8 px-4">
+        
+        <!-- Left Sidebar -->
+        <div class="md:col-span-1 space-y-6">
+            
+            <!-- Caregiver Info -->
+            <div class="glass-premium p-6" data-aos="fade-up">
+                <h3 class="text-xs font-bold text-warm-gray uppercase tracking-widest mb-4 border-b border-gray-100 pb-2">Guardian</h3>
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-full bg-warm-teal text-white flex items-center justify-center font-bold text-xl shadow-md">
+                        {{ session['real_name'][0] | upper }}
+                    </div>
+                    <div>
+                        <p class="font-bold text-warm-dark text-sm">{{ session['real_name'] }}</p>
+                        <p class="text-xs text-warm-gray">@{{ session['user'] }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Stats -->
+            <div class="glass-premium p-6" data-aos="fade-up" data-aos-delay="100">
+                <h3 class="text-xs font-bold text-warm-gray uppercase tracking-widest mb-4 border-b border-gray-100 pb-2">Birth Metrics</h3>
+                <ul class="space-y-4">
+                    <li class="flex justify-between items-center text-sm group">
+                        <span class="text-warm-gray group-hover:text-warm-teal transition-colors">Weight</span>
+                        <span class="font-bold text-warm-dark">{{ profile[5] }} kg</span>
+                    </li>
+                    <li class="flex justify-between items-center text-sm group">
+                        <span class="text-warm-gray group-hover:text-warm-teal transition-colors">Height</span>
+                        <span class="font-bold text-warm-dark">{{ profile[6] }} cm</span>
+                    </li>
+                    <li class="flex justify-between items-center text-sm group">
+                        <span class="text-warm-gray group-hover:text-warm-teal transition-colors">Head Circ.</span>
+                        <span class="font-bold text-warm-dark">{{ profile[7] }} cm</span>
+                    </li>
+                    <li class="flex justify-between items-center text-sm group">
+                        <span class="text-warm-gray group-hover:text-warm-teal transition-colors">Chest Circ.</span>
+                        <span class="font-bold text-warm-dark">{{ profile[8] }} cm</span>
+                    </li>
+                     <li class="flex justify-between items-center text-sm mt-2 pt-2 border-t border-gray-100">
+                        <span class="text-warm-gray">Apgar Score</span>
+                        <span class="font-bold px-2 py-0.5 rounded bg-green-100 text-green-700 shadow-sm">{{ profile[9] }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Right Content -->
+        <div class="md:col-span-2 space-y-6">
+            <!-- Health Report Card -->
+            <div class="glass-premium p-8 relative overflow-hidden" data-aos="fade-left">
+                <div class="absolute top-0 left-0 w-1 h-full bg-warm-teal"></div>
+                <h2 class="text-xl font-bold text-warm-dark mb-4">Initial Health Assessment</h2>
+                <div class="bg-white/50 rounded-2xl p-6 border border-white shadow-inner">
+                    <p class="text-warm-gray leading-relaxed italic">
+                        "{{ profile[10] }}"
+                    </p>
+                </div>
+                <div class="mt-4 flex gap-2">
+                    <span class="text-xs font-bold text-warm-teal bg-teal-50 px-3 py-1 rounded-full border border-teal-100">Analysis Complete</span>
+                    <span class="text-xs font-bold text-warm-gray bg-gray-50 px-3 py-1 rounded-full border border-gray-100">verified by AI</span>
+                </div>
+            </div>
+
+            <!-- Placeholder for future content -->
+            <div class="grid grid-cols-2 gap-4">
+                 <a href="/vaccine" class="glass-premium p-6 hover:scale-[1.02] transition-transform text-center group cursor-pointer">
+                    <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform">💉</span>
+                    <h3 class="font-bold text-warm-dark">Vaccines</h3>
+                    <p class="text-xs text-warm-gray">View Schedule</p>
+                 </a>
+                 <a href="/growth" class="glass-premium p-6 hover:scale-[1.02] transition-transform text-center group cursor-pointer">
+                    <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform">📏</span>
+                    <h3 class="font-bold text-warm-dark">Growth</h3>
+                    <p class="text-xs text-warm-gray">View Charts</p>
+                 </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 bg-warm-dark/40 backdrop-blur-sm transition-opacity" onclick="document.getElementById('editModal').classList.add('hidden')"></div>
+        
+        <div class="relative z-10 w-full max-w-2xl mx-auto mt-20 p-4 animate-fade-up-reveal">
+            <div class="bg-white rounded-[2rem] shadow-2xl overflow-hidden">
+                <div class="bg-warm-cream p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-warm-dark">Edit Profile Details</h3>
+                    <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-warm-gray hover:text-warm-coral text-2xl">&times;</button>
+                </div>
+                
+                <form action="/profile" method="POST" enctype="multipart/form-data" class="p-8 max-h-[70vh] overflow-y-auto">
+                    
+                    <div class="grid md:grid-cols-2 gap-6 mb-6">
+                        <div class="col-span-2">
+                             <label class="label-premium">Profile Picture</label>
+                             <input type="file" name="baby_pic" class="input-premium">
+                        </div>
+                        
+                        <div>
+                            <label class="label-premium">Baby's Name</label>
+                            <input type="text" name="baby_name" value="{{ profile[1] }}" class="input-premium" required>
+                        </div>
+                        <div>
+                            <label class="label-premium">Date of Birth</label>
+                            <input type="date" name="dob" value="{{ profile[2] }}" class="input-premium" required>
+                        </div>
+                        <div>
+                            <label class="label-premium">Gender</label>
+                            <select name="gender" class="input-premium" required>
+                                <option value="Male" {% if profile[3] == 'Male' %}selected{% endif %}>Male</option>
+                                <option value="Female" {% if profile[3] == 'Female' %}selected{% endif %}>Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label-premium">Blood Group</label>
+                            <select name="blood_group" class="input-premium" required>
+                                <option value="A+" {% if profile[4] == 'A+' %}selected{% endif %}>A+</option>
+                                <option value="A-" {% if profile[4] == 'A-' %}selected{% endif %}>A-</option>
+                                <option value="B+" {% if profile[4] == 'B+' %}selected{% endif %}>B+</option>
+                                <option value="B-" {% if profile[4] == 'B-' %}selected{% endif %}>B-</option>
+                                <option value="O+" {% if profile[4] == 'O+' %}selected{% endif %}>O+</option>
+                                <option value="O-" {% if profile[4] == 'O-' %}selected{% endif %}>O-</option>
+                                <option value="AB+" {% if profile[4] == 'AB+' %}selected{% endif %}>AB+</option>
+                                <option value="AB-" {% if profile[4] == 'AB-' %}selected{% endif %}>AB-</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-gray-100">
+                    <p class="font-bold text-warm-teal text-xs uppercase tracking-widest mb-4">Update Birth Measurements</p>
+
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="label-premium text-[10px]">Weight (kg)</label>
+                            <input type="number" step="0.01" name="weight" value="{{ profile[5] }}" class="input-premium px-2 py-2 text-center">
+                        </div>
+                        <div>
+                            <label class="label-premium text-[10px]">Height (cm)</label>
+                            <input type="number" step="0.1" name="height" value="{{ profile[6] }}" class="input-premium px-2 py-2 text-center">
+                        </div>
+                        <div>
+                            <label class="label-premium text-[10px]">Apgar</label>
+                            <input type="number" name="apgar" value="{{ profile[9] }}" class="input-premium px-2 py-2 text-center">
+                        </div>
+                        <div>
+                            <label class="label-premium text-[10px]">Head (cm)</label>
+                            <input type="number" step="0.1" name="head_circ" value="{{ profile[7] }}" class="input-premium px-2 py-2 text-center">
+                        </div>
+                        <div>
+                            <label class="label-premium text-[10px]">Chest (cm)</label>
+                            <input type="number" step="0.1" name="chest_circ" value="{{ profile[8] }}" class="input-premium px-2 py-2 text-center">
+                        </div>
+                    </div>
+
+                    <div class="pt-8 flex gap-4">
+                        <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')" class="w-1/3 border border-gray-200 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 transition uppercase text-xs tracking-widest">
+                            Cancel
+                        </button>
+                        <button type="submit" class="w-2/3 btn-primary py-3 rounded-xl shadow-lg">
+                            Save Changes
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YCRY - Premium Parenting</title>
+    
+    <!-- CSS Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
+    <!-- Tailwind Config for Premium Theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        warm: {
+                            cream: '#FFF9F5',
+                            teal: '#38B2AC',
+                            'teal-light': '#B2F5EA',
+                            yellow: '#FAF089',
+                            coral: '#FC8181',
+                            green: '#68D391',
+                            dark: '#1A202C',
+                            gray: '#4A5568',
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Nunito', 'sans-serif'],
+                        body: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-warm-cream font-body text-warm-dark min-h-screen flex flex-col relative overflow-x-hidden selection:bg-warm-teal selection:text-white">
+
+    <!-- Antigravity Background Blobs -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- Navigation -->
+    <nav class="nav-premium sticky top-0 z-50 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <!-- Brand -->
+                <a href="/" class="flex items-center gap-2 group">
+                    <span class="text-3xl transform group-hover:scale-110 transition duration-300">🧸</span>
+                    <span class="font-display font-extrabold text-2xl tracking-tight text-warm-dark group-hover:text-warm-teal transition-colors">YCRY.AI</span>
+                </a>
+
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center space-x-1">
+                    {% if session.get('user') %}
+                        <a href="/" class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition">Home</a>
+                        <a href="/cry" class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition">Translator</a>
+                        <a href="/vaccine" class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition">Vaccines</a>
+                        <a href="/growth" class="px-4 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition">Growth</a>
+                        <a href="/profile" class="ml-2 pl-2 pr-4 py-1.5 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition flex items-center gap-2">
+                            {% if navbar_pic %}
+                                <img src="{{ url_for('static', filename='profile_pics/' + navbar_pic) }}" class="w-8 h-8 rounded-full object-cover border-2 border-warm-teal">
+                            {% else %}
+                                👶
+                            {% endif %}
+                            Profile
+                        </a>
+                        <a href="/logout" class="ml-4 px-6 py-2 rounded-full font-bold text-sm bg-warm-coral text-white shadow-md hover:shadow-lg hover:scale-105 transition">Logout</a>
+                    {% else %}
+                        <a href="/login" class="px-6 py-2 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal transition">Login</a>
+                        <a href="/register" class="ml-2 px-6 py-2 rounded-full font-bold text-sm bg-warm-teal text-white shadow-md hover:shadow-lg hover:scale-105 transition">Get Started</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Flash Messages -->
+    <div class="max-w-4xl mx-auto px-4 mt-6 z-40 relative">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div data-aos="fade-down" class="glass-premium mb-4 p-4 rounded-xl shadow-lg flex items-center gap-4 border-l-4
+                        {% if category == 'success' %} border-warm-green text-green-700
+                        {% elif category == 'error' %} border-warm-coral text-red-700
+                        {% else %} border-warm-teal text-blue-700 {% endif %}">
+                        
+                        <span class="text-2xl">
+                            {% if category == 'success' %}🎉{% elif category == 'error' %}🧸{% else %}🤔{% endif %}
+                        </span>
+                        <p class="font-bold text-sm">{{ message }}</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-100 mt-20">
+        <div class="max-w-6xl mx-auto px-4 py-12">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="text-center md:text-left">
+                    <h3 class="font-display font-extrabold text-xl text-warm-dark mb-1">YCRY.AI</h3>
+                    <p class="text-warm-gray text-sm">Helping you understand your little one, one sound at a time.</p>
+                </div>
+                <div class="flex gap-6 text-2xl text-warm-gray">
+                    <span class="hover:text-warm-teal cursor-pointer transition transform hover:scale-110">🍼</span>
+                    <span class="hover:text-warm-yellow cursor-pointer transition transform hover:scale-110">⭐</span>
+                    <span class="hover:text-warm-coral cursor-pointer transition transform hover:scale-110">❤️</span>
+                </div>
+                <div class="text-xs text-warm-light font-medium">
+                    &copy; 2026 YCRY Parenting. Made with love.
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({
+            duration: 800,
+            once: true,
+            easing: 'ease-out-cubic'
+        });
+    </script>
+</body>
+</html>

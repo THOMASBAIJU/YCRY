@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    
+    <!-- Hero Header -->
+    <div class="relative rounded-[2.5rem] overflow-hidden mb-10 h-64 shadow-2xl" data-aos="fade-down">
+         <img src="{{ url_for('static', filename='images/growth_landing.png') }}" 
+              class="absolute inset-0 w-full h-full object-cover" alt="Growth">
+         <div class="absolute inset-0 bg-green-900/40 mix-blend-multiply"></div>
+         <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-white">
+             <h1 class="text-4xl font-display font-bold mb-2 text-shadow">Growth Journey 📏</h1>
+             <p class="text-green-50">Tracking <span class="text-white font-bold">{{ baby_name }}</span> grow, step by step.</p>
+         </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-8">
+        
+        <!-- Physical Growth Section -->
+        <div class="space-y-8">
+            <div class="card-warm p-8 relative overflow-hidden" data-aos="fade-right">
+                <!-- Decoration -->
+                <div class="absolute top-0 right-0 w-24 h-24 bg-warm-green rounded-bl-full opacity-10"></div>
+                
+                <h2 class="text-xl font-bold text-warm-dark mb-6 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-green-100 text-warm-green rounded-full flex items-center justify-center text-lg">⚖️</span>
+                    Physical Growth
+                </h2>
+
+                <form action="/growth" method="POST" class="space-y-4 mb-8">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="label-premium">Weight (kg)</label>
+                            <input type="number" step="0.01" name="weight" placeholder="e.g. 5.2" class="input-premium" required>
+                        </div>
+                        <div>
+                            <label class="label-premium">Height (cm)</label>
+                            <input type="number" step="0.1" name="height" placeholder="e.g. 60" class="input-premium" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-secondary w-full justify-center">Record New Entry</button>
+                </form>
+
+                <div class="glass-premium p-6 rounded-2xl bg-warm-cream border-warm-cream shadow-inner text-center">
+                    <p class="text-xs font-bold text-warm-gray uppercase tracking-widest mb-2">Latest Measurements</p>
+                    {% if latest %}
+                        <div class="flex justify-center items-center gap-8">
+                            <div>
+                                <span class="text-3xl font-display font-bold text-warm-dark">{{ latest[0] }}</span>
+                                <span class="text-sm text-warm-gray">kg</span>
+                            </div>
+                            <div class="h-8 w-px bg-warm-gray/20"></div>
+                             <div>
+                                <span class="text-3xl font-display font-bold text-warm-dark">{{ latest[1] }}</span>
+                                <span class="text-sm text-warm-gray">cm</span>
+                            </div>
+                        </div>
+                         <p class="text-[10px] text-warm-gray mt-2">Recorded on {{ latest[2] }}</p>
+                    {% else %}
+                        <p class="text-sm text-warm-gray italic">No records yet. Add one above!</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Growth Chart Section -->
+            <div class="glass-premium p-6 relative" data-aos="fade-up">
+                <div class="flex justify-between items-center mb-6">
+                     <h3 class="font-bold text-warm-dark flex items-center gap-2">
+                        <span class="text-xl">📈</span> Growth History
+                     </h3>
+                     
+                     <!-- Toggles -->
+                     <div class="flex bg-warm-cream rounded-xl p-1 gap-1">
+                        <button onclick="toggleChart('weight')" id="btn-weight" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-white shadow-sm text-warm-teal">
+                            Weight
+                        </button>
+                        <button onclick="toggleChart('height')" id="btn-height" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-warm-gray hover:bg-white/50">
+                            Height
+                        </button>
+                     </div>
+                </div>
+                
+                <div class="relative h-64 w-full">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Milestones Section (Right Column) -->
+        <div class="space-y-8">
+             <div class="card-warm p-8 relative overflow-hidden h-full" data-aos="fade-left">
+                <!-- Decoration -->
+                 <div class="absolute top-0 right-0 w-24 h-24 bg-purple-100 rounded-bl-full opacity-20"></div>
+
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-warm-dark flex items-center gap-3">
+                         <span class="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-lg">🏆</span>
+                        Development Milestones
+                    </h2>
+                    <p class="text-sm text-warm-gray ml-14 mt-1">Expected for <span class="font-bold text-warm-dark">{{ milestones.title }}</span></p>
+                </div>
+
+                <div class="space-y-6">
+                    
+                    <!-- Motor -->
+                    <div class="glass-premium p-5 rounded-xl border-l-4 border-blue-300">
+                        <h3 class="font-bold text-blue-600 text-sm mb-3">Motor Skills</h3>
+                        <ul class="space-y-2">
+                            {% for m in milestones.motor %}
+                            <li class="flex items-start gap-2 text-sm text-warm-dark">
+                                <span class="text-blue-400 mt-0.5">✓</span> {{ m }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                     <!-- Social -->
+                    <div class="glass-premium p-5 rounded-xl border-l-4 border-pink-300">
+                        <h3 class="font-bold text-pink-600 text-sm mb-3">Social & Emotional</h3>
+                        <ul class="space-y-2">
+                            {% for m in milestones.social %}
+                            <li class="flex items-start gap-2 text-sm text-warm-dark">
+                                <span class="text-pink-400 mt-0.5">♥</span> {{ m }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <!-- Communication -->
+                    <div class="glass-premium p-5 rounded-xl border-l-4 border-yellow-300">
+                        <h3 class="font-bold text-yellow-600 text-sm mb-3">Communication</h3>
+                        <ul class="space-y-2">
+                            {% for m in milestones.comm %}
+                            <li class="flex items-start gap-2 text-sm text-warm-dark">
+                                <span class="text-yellow-400 mt-0.5">💬</span> {{ m }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                </div>
+             </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script id="chart-data" type="application/json">
+    {
+        "dates": {{ dates | tojson }},
+        "weights": {{ weights | tojson }},
+        "heights": {{ heights | tojson }}
+    }
+</script>
+<script>
+    (function() {
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        
+        // Data from DOM
+        const rawData = document.getElementById('chart-data').textContent;
+        const chartData = JSON.parse(rawData);
+        
+        const dates = chartData.dates;
+        const chartWeights = chartData.weights;
+        const chartHeights = chartData.heights;
+
+        let currentChart = null;
+
+        function renderChart(type) {
+            if (currentChart) currentChart.destroy();
+
+            const isWeight = type === 'weight';
+            const label = isWeight ? 'Weight (kg)' : 'Height (cm)';
+            const data = isWeight ? chartWeights : chartHeights;
+            const color = isWeight ? '#38B2AC' : '#ED8936';
+            const bgColor = isWeight ? 'rgba(56, 178, 172, 0.1)' : 'rgba(237, 137, 54, 0.1)';
+
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: bgColor,
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: color,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            titleColor: '#1F2937',
+                            bodyColor: '#4B5563',
+                            borderColor: '#E5E7EB',
+                            borderWidth: 1,
+                            padding: 12,
+                            titleFont: { family: "'Nunito', sans-serif", size: 14 },
+                            bodyFont: { family: "'Inter', sans-serif", size: 13 },
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { family: "'Inter', sans-serif" } }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            grid: { borderDash: [5, 5], color: '#F3F4F6' },
+                            title: { display: true, text: label, font: { weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Global function for toggle button
+        window.toggleChart = function(type) {
+            renderChart(type);
+            
+            // Update button styles
+            const btnW = document.getElementById('btn-weight');
+            const btnH = document.getElementById('btn-height');
+            
+            if (type === 'weight') {
+                btnW.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-white shadow-sm text-warm-teal";
+                btnH.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-warm-gray hover:bg-white/50";
+            } else {
+                btnH.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-white shadow-sm text-warm-coral";
+                btnW.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-warm-gray hover:bg-white/50";
+            }
+        };
+
+        // Initialize with weight
+        renderChart('weight');
+    })();
+</script>
+{% endblock %}

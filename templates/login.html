@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto min-h-[80vh] flex items-center justify-center">
+    
+    <div class="grid lg:grid-cols-2 gap-0 w-full bg-white/40 backdrop-blur-xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/50" data-aos="fade-up">
+        
+        <!-- Image Section (Left) -->
+        <div class="relative hidden lg:block h-full min-h-[600px]">
+            <img src="https://images.unsplash.com/photo-1519689680058-324335c77eba?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                 alt="Mother and Child" 
+                 class="absolute inset-0 w-full h-full object-cover">
+            <div class="absolute inset-0 bg-warm-teal/80 mix-blend-multiply"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-12 text-white">
+                <blockquote class="font-display text-3xl font-bold mb-4">"The best way to make children good is to make them happy."</blockquote>
+                <p class="font-body opacity-80">— Oscar Wilde</p>
+            </div>
+        </div>
+
+        <!-- Form Section (Right) -->
+        <div class="p-8 md:p-16 flex flex-col justify-center relative">
+            <div class="text-center mb-10">
+                <h1 class="text-4xl font-display font-extrabold text-warm-dark mb-2">Welcome Back! 👋</h1>
+                <p class="text-warm-gray">We missed you. Sign in to see updates.</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-6 p-4 rounded-xl text-sm font-bold text-center
+                                    {% if category == 'error' %}bg-red-50 text-red-500 border border-red-200{% else %}bg-green-50 text-green-500 border border-green-200{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="space-y-6">
+                <div>
+                    <label for="username" class="label-premium">Username</label>
+                    <input type="text" name="username" id="username" class="input-premium" placeholder="Ex: supermom24" minlength="4" required>
+                </div>
+                
+                <div>
+                    <label for="password" class="label-premium">Password</label>
+                    <input type="password" name="password" id="password" class="input-premium" placeholder="••••••••" minlength="6" required>
+                </div>
+
+                <button type="submit" class="btn-primary w-full justify-center text-lg mt-4">
+                    Sign In
+                </button>
+            </form>
+
+        <p class="text-center text-gray-400 text-xs mt-6 italic">"Children are the hands by which we take hold of heaven."</p>
+    </div>
+</div>
+{% endblock %}
