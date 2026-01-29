@@ -76,6 +76,11 @@
 
                 </div>
 
+                <!-- Audio Preview -->
+                <div id="audio-preview-container" class="hidden mb-4 p-2 bg-white/50 rounded-xl flex items-center justify-center">
+                    <audio id="audio-preview" controls class="w-full"></audio>
+                </div>
+
                 <button type="submit" class="mt-8 w-full btn-primary py-4 text-lg justify-center shadow-xl hover:shadow-2xl relative z-30">
                     <span class="animate-pulse mr-2">🔍</span> Analyze Sound
                 </button>
@@ -125,8 +130,16 @@
     function updateFileName() {
         const input = document.getElementById('fileInput');
         const display = document.getElementById('fileNameDisplay');
+        const previewContainer = document.getElementById('audio-preview-container');
+        const audioPreview = document.getElementById('audio-preview');
+
         if (input.files.length > 0) {
             display.innerHTML = '<span class="text-warm-teal">✅ Ready:</span> <br>' + input.files[0].name;
+            
+            // Set Audio Preview
+            const fileURL = URL.createObjectURL(input.files[0]);
+            audioPreview.src = fileURL;
+            previewContainer.classList.remove('hidden');
         }
     }
 
@@ -140,7 +153,7 @@
         
         const fileInput = document.getElementById('fileInput');
         if (fileInput.files.length === 0) {
-            alert("⚠️ Please upload a file or record audio first!");
+            showToast("⚠️ Please upload a file or record audio first!", 'error');
             return;
         }
 
@@ -161,7 +174,7 @@
             const data = await response.json();
 
             if (data.error) {
-                alert("Error: " + data.error);
+                showToast("Error: " + data.error, 'error');
             } else if (data.success) {
                 // Update UI with Results
                 resultContentEmpty.classList.add('hidden');
@@ -192,7 +205,7 @@
 
         } catch (error) {
             console.error("Error:", error);
-            alert("An unexpected error occurred.");
+            showToast("Server Error. Check console for details.", 'error');
         } finally {
             // Reset Button
             btn.innerHTML = originalBtnContent;
@@ -260,6 +273,13 @@
                     btn.classList.remove('animate-pulse');
                     visual.classList.add('hidden');
                     clearInterval(timerInterval);
+
+                    // Set Audio Preview
+                    const audioURL = URL.createObjectURL(audioBlob);
+                    const audioPreview = document.getElementById('audio-preview');
+                    const previewContainer = document.getElementById('audio-preview-container');
+                    audioPreview.src = audioURL;
+                    previewContainer.classList.remove('hidden');
                 };
 
                 mediaRecorder.start();
@@ -282,7 +302,7 @@
 
             } catch (err) {
                 console.error("Mic Error:", err);
-                alert("Could not access microphone: " + err.message);
+                showToast("Could not access microphone: " + err.message, 'error');
             }
         } else {
             // STOP Recording
