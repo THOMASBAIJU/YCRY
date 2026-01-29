@@ -44,13 +44,15 @@
                      class="w-full max-w-md mx-auto h-auto rounded-[3rem] shadow-2xl mask-squircle-ish border-4 border-white/50 object-cover aspect-[4/5]">
                 
                 <!-- Floating Badge -->
-                <div class="absolute -bottom-10 -left-10 glass-premium p-4 flex items-center gap-4 animate-float-delayed z-20 max-w-xs">
-                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl shadow-sm">
-                        🛡️
+                <div class="absolute -bottom-10 -left-10 glass-premium p-4 flex items-center gap-4 animate-float-delayed z-20 max-w-xs transition-colors duration-500
+                            {% if vaccine_alert.type == 'danger' %} border-l-4 border-red-500 bg-red-50/90 {% endif %}">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-sm
+                                {% if vaccine_alert.type == 'danger' %} bg-red-100 text-red-500 animate-pulse {% else %} bg-green-100 text-green-600 {% endif %}">
+                        {{ vaccine_alert.icon }}
                     </div>
                     <div>
-                        <p class="font-bold text-warm-dark text-sm">Vaccination Alert</p>
-                        <p class="text-xs text-warm-gray">Upcoming: Polio V3</p>
+                        <p class="font-bold text-warm-dark text-sm {% if vaccine_alert.type == 'danger' %} text-red-600 {% endif %}">{{ vaccine_alert.title }}</p>
+                        <p class="text-xs text-warm-gray">{{ vaccine_alert.text }}</p>
                     </div>
                 </div>
             </div>

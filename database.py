@@ -1,136 +1,141 @@
-import sqlite3
-import bcrypt
 import datetime
+import bcrypt
+from pymongo import MongoClient
+import os
+
+# CONFIG
+MONGO_URI = "mongodb+srv://thomasbaiju02_db_user:abm95KG2rEuItPWP@cluster0.9iivpdx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+DB_NAME = "ycry"
+
+client = None
+db = None
 
 def init_db():
-    conn = sqlite3.connect('ycry_users.db', check_same_thread=False)
-    c = conn.cursor()
-    
-    # Users Table
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (username TEXT PRIMARY KEY, password TEXT, name TEXT)''')
-    
-    # Profiles Table (Added profile_pic column)
-    c.execute('''CREATE TABLE IF NOT EXISTS profiles
-                 (username TEXT PRIMARY KEY, 
-                  baby_name TEXT, 
-                  dob TEXT, 
-                  gender TEXT,
-                  blood_group TEXT,
-                  weight_birth REAL,
-                  height_birth REAL,
-                  head_circ REAL,
-                  chest_circ REAL,
-                  apgar_score INTEGER,
-                  health_summary TEXT,
-                  profile_pic TEXT, 
-                  FOREIGN KEY(username) REFERENCES users(username))''')
-                  
-    # Growth & Vaccine Tables (Same as before)
-    c.execute('''CREATE TABLE IF NOT EXISTS growth
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, 
-                  date TEXT, weight REAL, height REAL,
-                  FOREIGN KEY(username) REFERENCES users(username))''')
-
-    c.execute('''CREATE TABLE IF NOT EXISTS vaccines
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, 
-                  vaccine_name TEXT, date_given TEXT,
-                  FOREIGN KEY(username) REFERENCES users(username))''')
-    
-    conn.commit()
-    conn.close()
+    global client, db
+    try:
+        client = MongoClient(MONGO_URI)
+        db = client[DB_NAME]
+        # Quick check
+        client.admin.command('ping')
+        print("✅ Connected to MongoDB Atlas!")
+    except Exception as e:
+        print(f"❌ MongoDB Connection Failed: {e}")
 
 # --- USER FUNCTIONS ---
 def create_user(username, password, name):
-    conn = sqlite3.connect('ycry_users.db')
-    c = conn.cursor()
-    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    try:
-        c.execute('INSERT INTO users VALUES (?,?,?)', (username, hashed_pw, name))
-        conn.commit()
-        return True
-    except sqlite3.IntegrityError:
+    if db is None: init_db()
+    users = db.users
+    
+    if users.find_one({"_id": username}):
         return False
-    finally:
-        conn.close()
+        
+    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    
+    user_doc = {
+        "_id": username,
+        "password": hashed_pw,
+        "caregiver_name": name,
+        "profile": {},
+        "growth": [],
+        "vaccines": []
+    }
+    
+    try:
+        users.insert_one(user_doc)
+        return True
+    except Exception as e:
+        print(f"Create User Error: {e}")
+        return False
 
 def login_user(username, password):
-    conn = sqlite3.connect('ycry_users.db')
-    c = conn.cursor()
-    c.execute('SELECT password, name FROM users WHERE username = ?', (username,))
-    data = c.fetchone()
-    conn.close()
-    if data and bcrypt.checkpw(password.encode('utf-8'), data[0]):
-        return data[1]
+    if db is None: init_db()
+    user = db.users.find_one({"_id": username})
+    
+    if user and bcrypt.checkpw(password.encode('utf-8'), user['password']):
+        return user['caregiver_name']
     return None
 
-# --- PROFILE FUNCTIONS (UPDATED) ---
+# --- PROFILE FUNCTIONS ---
 def save_full_profile(username, data):
     """
-    Saves profile including picture.
     data = (name, dob, gender, blood, weight, height, head, chest, apgar, summary, pic_path)
+    We will store this as a dict in MongoDB.
     """
-    conn = sqlite3.connect('ycry_users.db')
-    c = conn.cursor()
-    # Now inserting 12 values total (username + 11 fields)
-    c.execute('''INSERT OR REPLACE INTO profiles VALUES 
-                 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-              (username, *data))
-    conn.commit()
-    conn.close()
+    if db is None: init_db()
+    
+    # Map tuple to meaningful keys
+    profile_doc = {
+        "baby_name": data[0],
+        "dob": data[1],
+        "gender": data[2],
+        "blood_group": data[3],
+        "weight_birth": data[4],
+        "height_birth": data[5],
+        "head_circ": data[6],
+        "chest_circ": data[7],
+        "apgar_score": data[8],
+        "health_summary": data[9],
+        "profile_pic": data[10]
+    }
+    
+    db.users.update_one(
+        {"_id": username},
+        {"$set": {"profile": profile_doc}}
+    )
 
 def get_profile(username):
-    conn = sqlite3.connect('ycry_users.db')
-    c = conn.cursor()
-    c.execute('SELECT * FROM profiles WHERE username = ?', (username,))
-    data = c.fetchone()
-    conn.close()
-    return data
+    if db is None: init_db()
+    user = db.users.find_one({"_id": username})
+    if user and user.get('profile'):
+        return user['profile']
+    return None
 
 # --- GROWTH & VACCINE FUNCTIONS ---
 def add_growth_record(username, weight, height):
-    conn = sqlite3.connect('ycry_users.db')
-    c = conn.cursor()
-    today = datetime.date.today()
-    c.execute('INSERT INTO growth (username, date, weight, height) VALUES (?,?,?,?)', 
-              (username, str(today), weight, height))
-    conn.commit()
-    conn.close()
+    if db is None: init_db()
+    today = str(datetime.date.today())
+    
+    record = {
+        "date": today,
+        "weight": weight,
+        "height": height
+    }
+    
+    db.users.update_one(
+        {"_id": username},
+        {"$push": {"growth": record}}
+    )
 
 def get_latest_growth(username):
-    conn = sqlite3.connect('ycry_users.db')
-    c = conn.cursor()
-    c.execute('SELECT weight, height FROM growth WHERE username = ? ORDER BY id DESC LIMIT 1', (username,))
-    data = c.fetchone()
-    conn.close()
-    return data
-
-    conn.close()
-    return data
+    if db is None: init_db()
+    user = db.users.find_one({"_id": username})
+    if user and user.get('growth'):
+        latest = user['growth'][-1]
+        return {"weight": latest['weight'], "height": latest['height']}
+    return None
 
 def get_growth_history(username):
-    conn = sqlite3.connect('ycry_users.db')
-    c = conn.cursor()
-    c.execute('SELECT date, weight, height FROM growth WHERE username = ? ORDER BY date ASC', (username,))
-    data = c.fetchall()
-    conn.close()
-    return data
+    if db is None: init_db()
+    user = db.users.find_one({"_id": username})
+    if user and user.get('growth'):
+        return user['growth']
+    return []
 
 def mark_vaccine_done(username, vaccine_name):
-    conn = sqlite3.connect('ycry_users.db')
-    c = conn.cursor()
-    today = datetime.date.today()
-    c.execute('SELECT id FROM vaccines WHERE username=? AND vaccine_name=?', (username, vaccine_name))
-    if not c.fetchone():
-        c.execute('INSERT INTO vaccines (username, vaccine_name, date_given) VALUES (?,?,?)', 
-                  (username, vaccine_name, str(today)))
-    conn.commit()
-    conn.close()
+    if db is None: init_db()
+    today = str(datetime.date.today())
+    
+    # Check if already exists to avoid duplicates (idempotent)
+    user = db.users.find_one({"_id": username, "vaccines.name": vaccine_name})
+    if not user:
+        db.users.update_one(
+            {"_id": username},
+            {"$push": {"vaccines": {"name": vaccine_name, "date": today}}}
+        )
 
 def get_completed_vaccines(username):
-    conn = sqlite3.connect('ycry_users.db')
-    c = conn.cursor()
-    c.execute('SELECT vaccine_name FROM vaccines WHERE username=?', (username,))
-    data = c.fetchall()
-    conn.close()
-    return [x[0] for x in data]
+    if db is None: init_db()
+    user = db.users.find_one({"_id": username})
+    if user and user.get('vaccines'):
+        return [v['name'] for v in user['vaccines']]
+    return []

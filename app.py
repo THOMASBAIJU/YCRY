@@ -33,6 +33,17 @@ try:
     if os.path.exists(MODEL_PATH):
         ai_model = load_model(MODEL_PATH)
         print("✅ AI Model Loaded")
+        
+        # --- WARMUP ---
+        # Run a dummy prediction to initialize the graph
+        try:
+            print("⏳ Warming up AI model...")
+            dummy_input = np.zeros((1, 64, 64, 3))
+            ai_model.predict(dummy_input, verbose=0)
+            print("🔥 AI Model Warmed Up & Ready")
+        except Exception as e:
+            print(f"⚠️ Model Warmup Failed: {e}")
+
 except Exception as e:
     print(f"❌ Model Error: {e}")
 
@@ -145,8 +156,8 @@ def get_vaccine_schedule(dob_str, completed_list):
 def inject_user_profile():
     if 'user' in session:
         profile = db.get_profile(session['user'])
-        if profile and profile[11]:
-            return {'navbar_pic': profile[11]}
+        if profile and profile.get('profile_pic'):
+            return {'navbar_pic': profile['profile_pic']}
     return {'navbar_pic': None}
 
 # --- ROUTES ---
@@ -160,18 +171,52 @@ def home():
     # If logged in, load dashboard
     profile = db.get_profile(session['user'])
     if profile:
-        baby_name = profile[1]
-        dob_str = profile[2]
-        health_summary = profile[10]
-        pic = profile[11] if profile[11] else None
+        baby_name = profile['baby_name']
+        dob_str = profile['dob']
+        health_summary = profile['health_summary']
+        pic = profile['profile_pic'] if profile.get('profile_pic') else None
         
         age = calculate_age(dob_str)
         growth = db.get_latest_growth(session['user'])
-        weight = f"{growth[0]} kg" if growth else f"{profile[5]} kg (Birth)"
+        weight = f"{growth['weight']} kg" if growth else f"{profile['weight_birth']} kg (Birth)"
+
+        # Vaccination Alert Logic
+        completed_vaccines = db.get_completed_vaccines(session['user'])
+        schedule, _ = get_vaccine_schedule(dob_str, completed_vaccines)
         
+        vaccine_alert = {
+             "type": "success", # success (green) or danger (red)
+             "title": "Vaccination Status",
+             "text": "All Up to Date",
+             "icon": "🛡️"
+        }
+
+        for milestone in schedule:
+            if milestone['status'] != "Completed":
+                # Find first incomplete shot
+                missing_shots = [s['name'] for s in milestone['shots'] if not s['done']]
+                next_shot = missing_shots[0] if missing_shots else "Vaccine"
+                
+                if milestone['status'] == "Overdue":
+                    vaccine_alert = {
+                        "type": "danger",
+                        "title": "Missing Vaccine!",
+                        "text": f"Overdue: {next_shot}",
+                        "icon": "⚠️"
+                    }
+                else:
+                    vaccine_alert = {
+                        "type": "success",
+                        "title": "Vaccination Alert",
+                        "text": f"Upcoming: {next_shot}",
+                        "icon": "🛡️"
+                    }
+                break
+
         return render_template('home.html', logged_in=True, 
                                name=baby_name, age=age, weight=weight, 
-                               health_summary=health_summary, profile_pic=pic)
+                               health_summary=health_summary, profile_pic=pic,
+                               vaccine_alert=vaccine_alert)
     
     # Fallback if profile missing (should rarely happen)
     return redirect(url_for('profile'))
@@ -268,7 +313,7 @@ def profile():
         apgar = int(request.form['apgar'])
         
         old_profile = db.get_profile(session['user'])
-        pic_filename = old_profile[11] 
+        pic_filename = old_profile['profile_pic'] if old_profile else "" 
 
         if 'baby_pic' in request.files:
             file = request.files['baby_pic']
@@ -296,58 +341,97 @@ def logout():
 @app.route('/cry', methods=['GET', 'POST'])
 def cry():
     if 'user' not in session: return redirect(url_for('login'))
+    
+    # Initialize variables for template rendering
     pred, conf, advice = None, 0, ""
-    if request.method == 'POST' and 'audio' in request.files:
-        f = request.files['audio']
-        if f.filename:
-            path = os.path.join(app.config['UPLOAD_FOLDER'], "temp.wav")
-            f.save(path)
-            try:
+
+    if request.method == 'POST':
+        import traceback
+        try:
+            # Check for file
+            if 'audio' not in request.files:
+                return jsonify({"error": "No file part"}), 400
+            
+            f = request.files['audio']
+            if f.filename == '':
+                return jsonify({"error": "No selected file"}), 400
+
+            if f:
+                # Save file
+                import uuid
+                unique_id = str(uuid.uuid4())
+                audio_filename = f"temp_{unique_id}.wav"
+                img_filename = f"temp_spec_{unique_id}.png"
+                
+                audio_path = os.path.join(app.config['UPLOAD_FOLDER'], audio_filename)
+                img_path = os.path.join(app.config['UPLOAD_FOLDER'], img_filename)
+                try:
+                    f.save(audio_path)
+                except Exception as e:
+                    print(f"File Save Error: {str(e)}")
+                    return jsonify({"error": f"Failed to save file: {str(e)}"}), 500
+
                 # Clear any existing plots
                 plt.close('all')
                 
                 # Load audio
                 try:
-                    y, sr = librosa.load(path, sr=22050, duration=5)
+                    y, sr = librosa.load(audio_path, sr=22050, duration=5)
                 except Exception as librosa_error:
-                    print(f"❌ Librosa Load Error: {librosa_error}")
-                    return {"error": "Error reading audio file. Please try a different format (WAV/MP3)."}, 400
+                    print(f"Librosa Error: {str(librosa_error)}\n{traceback.format_exc()}")
+                    return jsonify({"error": "Error reading audio file. Please ensure ffmpeg is installed and the file is a valid audio format."}), 400
 
-                fig = plt.figure(figsize=(4, 4))
-                librosa.display.specshow(librosa.power_to_db(librosa.feature.melspectrogram(y=y, sr=sr), ref=np.max), sr=sr)
-                plt.axis('off')
-                
-                img_path = os.path.join(app.config['UPLOAD_FOLDER'], "temp_spec.png")
-                plt.savefig(img_path, bbox_inches='tight', pad_inches=0)
-                plt.close(fig)
-                plt.close('all')
-
-                img = image.img_to_array(image.load_img(img_path, target_size=(64, 64))) / 255.0
-                
-                if ai_model:
-                    probs = ai_model.predict(np.expand_dims(img, axis=0))[0]
-                    classes = ["Burping", "Discomfort", "Hunger", "Pain", "Tired"]
-                    # Explicit type casting for JSON serialization
-                    pred = str(classes[np.argmax(probs)])
-                    conf_val = float(np.max(probs) * 100)
-                    conf = f"{conf_val:.1f}"
-                    advice = {"Hunger": "Feed baby", "Pain": "Check injury", "Burping": "Burp baby", "Discomfort": "Check diaper", "Tired": "Sleep time"}.get(pred, "Check baby")
+                # Generate Spectrogram
+                try:
+                    fig = plt.figure(figsize=(4, 4))
+                    librosa.display.specshow(librosa.power_to_db(librosa.feature.melspectrogram(y=y, sr=sr), ref=np.max), sr=sr)
+                    plt.axis('off')
                     
-                    # RETURN JSON
-                    return jsonify({
-                        "prediction": pred,
-                        "confidence": conf,
-                        "advice": advice,
-                        "success": True
-                    })
+                    plt.savefig(img_path, bbox_inches='tight', pad_inches=0)
+                    plt.close(fig)
+                    plt.close('all')
+                except Exception as plot_error:
+                      print(f"Plot Error: {str(plot_error)}\n{traceback.format_exc()}")
+                      return jsonify({"error": f"Error generating spectrogram: {str(plot_error)}"}), 500
+
+                # AI Prediction
+                if ai_model:
+                    try:
+                        img = image.img_to_array(image.load_img(img_path, target_size=(64, 64))) / 255.0
+                        probs = ai_model.predict(np.expand_dims(img, axis=0), verbose=0)[0]
+                        classes = ["Burping", "Discomfort", "Hunger", "Pain", "Tired"]
+                        
+                        pred = str(classes[np.argmax(probs)])
+                        conf_val = float(np.max(probs) * 100)
+                        conf = f"{conf_val:.1f}"
+                        advice = {"Hunger": "Feed baby", "Pain": "Check injury", "Burping": "Burp baby", "Discomfort": "Check diaper", "Tired": "Sleep time"}.get(pred, "Check baby")
+                        
+                        return jsonify({
+                            "prediction": pred,
+                            "confidence": conf,
+                            "advice": advice,
+                            "success": True
+                        })
+                    except Exception as ai_error:
+                        print(f"AI Prediction Error: {str(ai_error)}\n{traceback.format_exc()}")
+                        return jsonify({"error": f"AI model prediction failed: {str(ai_error)}"}), 500
                 else:
+                    print("AI Model not loaded")
                     return jsonify({"error": "AI Model not loaded."}), 500
 
-            except Exception as e:
-                print(f"❌ Cry Analysis Error: {e}")
-                return jsonify({"error": str(e)}), 500
-            finally:
-                plt.close('all')
+        except Exception as e:
+            print(f"General Error: {str(e)}\n{traceback.format_exc()}")
+            return jsonify({"error": f"An unexpected server error occurred: {str(e)}"}), 500
+        finally:
+             plt.close('all')
+             # Cleanup temp files
+             try:
+                 if 'audio_path' in locals() and os.path.exists(audio_path):
+                     os.remove(audio_path)
+                 if 'img_path' in locals() and os.path.exists(img_path):
+                     os.remove(img_path)
+             except Exception as cleanup_k:
+                 print(f"Cleanup Error: {cleanup_k}")
     
     return render_template('cry.html', prediction=None, confidence=0, advice="")
 
@@ -363,8 +447,8 @@ def vaccine():
             flash(f"✅ Marked {vaccine_name} as completed!")
             return redirect(url_for('vaccine'))
     completed = db.get_completed_vaccines(session['user'])
-    schedule, show_warning = get_vaccine_schedule(prof[2], completed)
-    return render_template('vaccine.html', schedule=schedule, baby_name=prof[1], warning=show_warning)
+    schedule, show_warning = get_vaccine_schedule(prof['dob'], completed)
+    return render_template('vaccine.html', schedule=schedule, baby_name=prof['baby_name'], warning=show_warning)
 
 @app.route('/growth', methods=['GET', 'POST'])
 def growth():
@@ -379,27 +463,27 @@ def growth():
         flash("✅ Physical growth recorded!")
         
     latest = db.get_latest_growth(session['user'])
-    age = calculate_age(prof[2])
+    age = calculate_age(prof['dob'])
     
     # 2. Get Mental/Motor Milestones
     milestones = get_milestones(age)
     
     # 3. Get Growth Chart Data
     history = db.get_growth_history(session['user'])
-    # history is list of (date, weight, height)
-    chart_dates = [r[0] for r in history] if history else []
-    chart_weights = [r[1] for r in history] if history else []
-    chart_heights = [r[2] for r in history] if history else []
+    # history is list of dicts {date, weight, height}
+    chart_dates = [r['date'] for r in history] if history else []
+    chart_weights = [r['weight'] for r in history] if history else []
+    chart_heights = [r['height'] for r in history] if history else []
 
     # If no history, add birth data if available
     if not history and prof:
-        chart_dates = [prof[2]]
-        chart_weights = [prof[5]]
-        chart_heights = [prof[6]]
+        chart_dates = [prof['dob']]
+        chart_weights = [prof['weight_birth']]
+        chart_heights = [prof['height_birth']]
     
     return render_template('growth.html', 
                            latest=latest, 
-                           baby_name=prof[1], 
+                           baby_name=prof['baby_name'], 
                            age=age, 
                            status="Healthy",
                            milestones=milestones,
@@ -412,9 +496,9 @@ def nutrition():
     prof = db.get_profile(session['user'])
     if not prof: return redirect(url_for('profile'))
     
-    age_months = calculate_age(prof[2])
+    age_months = calculate_age(prof['dob'])
     guide = get_nutrition_guide(age_months)
-    return render_template('nutrition.html', guide=guide, age=age_months, baby_name=prof[1])
+    return render_template('nutrition.html', guide=guide, age=age_months, baby_name=prof['baby_name'])
 
 @app.route('/exercises')
 def exercises():
@@ -422,9 +506,9 @@ def exercises():
     prof = db.get_profile(session['user'])
     if not prof: return redirect(url_for('profile'))
     
-    age_months = calculate_age(prof[2])
+    age_months = calculate_age(prof['dob'])
     exercises_list = get_exercises(age_months)
-    return render_template('exercises.html', exercises=exercises_list, age=age_months, baby_name=prof[1])
+    return render_template('exercises.html', exercises=exercises_list, age=age_months, baby_name=prof['baby_name'])
 
 @app.route('/health')
 def health():
@@ -433,7 +517,8 @@ def health():
     if not prof: return redirect(url_for('profile'))
     
     warnings = get_warning_signs()
-    return render_template('health.html', warnings=warnings, baby_name=prof[1])
+    warnings = get_warning_signs()
+    return render_template('health.html', warnings=warnings, baby_name=prof['baby_name'])
 
 # --- NEW HELPERS ---
 def get_nutrition_guide(age):
@@ -468,10 +553,14 @@ def get_nutrition_guide(age):
 
 def get_exercises(age):
     if age < 3:
-        return [
-            {"name": "Tummy Time", "desc": "Place baby on stomach while awake.", "benefit": "Strengthens neck & shoulders", "video_id": "bq0S_nulAyk"},
-            {"name": "Visual Tracking", "desc": "Move a toy slowly side-to-side.", "benefit": "Improves eye coordination", "video_id": "k3Y0f24aI74"}
-        ]
+        exercises = [{"name": "Tummy Time", "desc": "Place baby on stomach while awake.", "benefit": "Strengthens neck & shoulders", "video_id": "bq0S_nulAyk"}]
+        
+        if age == 1:
+            exercises.append({"name": "Leg Bicycle", "desc": "Gently cycle baby's legs towards tummy.", "benefit": "Relieves gas & constipations", "video_id": "nzix4pZtdXs"})
+        else:
+            exercises.append({"name": "Visual Tracking", "desc": "Move a toy slowly side-to-side.", "benefit": "Improves eye coordination", "video_id": "k3Y0f24aI74"})
+            
+        return exercises
     elif age < 6:
         return [
             {"name": "Supported Sit", "desc": "Prop baby up with pillows.", "benefit": "Core strength", "video_id": "_WwlTvU1DOs"},
@@ -498,4 +587,4 @@ def get_warning_signs():
     ]
 
 if __name__ == '__main__':
-    app.run(debug=True, threaded=False)
+    app.run(debug=True, use_reloader=False, threaded=False)

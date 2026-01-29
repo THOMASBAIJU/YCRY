@@ -92,25 +92,84 @@
         </div>
     </nav>
     
-    <!-- Flash Messages -->
-    <div class="max-w-4xl mx-auto px-4 mt-6 z-40 relative">
+    </div>
+
+    <!-- Global Notification Container (Fixed) -->
+    <div id="toast-container" class="fixed top-24 right-4 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Hidden Flash Data for JS Bridge -->
+    <div id="flash-data" class="hidden" data-messages='[
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div data-aos="fade-down" class="glass-premium mb-4 p-4 rounded-xl shadow-lg flex items-center gap-4 border-l-4
-                        {% if category == 'success' %} border-warm-green text-green-700
-                        {% elif category == 'error' %} border-warm-coral text-red-700
-                        {% else %} border-warm-teal text-blue-700 {% endif %}">
-                        
-                        <span class="text-2xl">
-                            {% if category == 'success' %}🎉{% elif category == 'error' %}🧸{% else %}🤔{% endif %}
-                        </span>
-                        <p class="font-bold text-sm">{{ message }}</p>
-                    </div>
+                    {"msg": "{{ message }}", "cat": "{{ category }}"}{{ "," if not loop.last else "" }}
                 {% endfor %}
             {% endif %}
         {% endwith %}
-    </div>
+    ]'></div>
+
+    <script>
+        // Global Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            
+            // Icons & Colors
+            const config = {
+                success: { icon: '🎉', border: 'border-warm-green', text: 'text-green-700', bg: 'bg-white' },
+                error:   { icon: '🧸', border: 'border-warm-coral', text: 'text-red-700',   bg: 'bg-white' },
+                info:    { icon: '🤔', border: 'border-warm-teal',  text: 'text-blue-700',  bg: 'bg-white' }
+            };
+            const style = config[type] || config.info;
+
+            // Create Element
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto transform translate-x-full transition-all duration-500 ease-out glass-premium p-4 rounded-xl shadow-2xl flex items-center gap-4 border-l-4 ${style.border} ${style.text} min-w-[300px] max-w-sm`;
+            toast.innerHTML = `
+                <span class="text-2xl">${style.icon}</span>
+                <p class="font-bold text-sm flex-grow">${message}</p>
+                <button onclick="this.parentElement.remove()" class="text-warm-gray hover:text-warm-dark font-bold text-lg">&times;</button>
+            `;
+
+            // Append & Animate
+            container.appendChild(toast);
+            
+            // Trigger animation after render
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full');
+            });
+
+            // Auto Remove
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-full');
+                setTimeout(() => toast.remove(), 500);
+            }, 5000);
+        }
+
+        // Bridge Flask Flash Messages to Toast System
+        document.addEventListener('DOMContentLoaded', () => {
+            const flashDataEl = document.getElementById('flash-data');
+            let flashMessages = [];
+            
+            try {
+                // Parse the JSON string from the data attribute
+                // We use || "[]" to handle cases where the attribute might be empty or malformed
+                const rawData = flashDataEl.getAttribute('data-messages');
+                if (rawData) {
+                    flashMessages = JSON.parse(rawData);
+                }
+            } catch (e) {
+                console.error("Error parsing flash messages:", e);
+            }
+            
+            flashMessages.forEach((flash, index) => {
+                setTimeout(() => {
+                    // Map Flask 'message' category to 'info'
+                    let type = flash.cat === 'message' ? 'info' : flash.cat; 
+                    showToast(flash.msg, type);
+                }, index * 300); // Stagger animations
+            });
+        });
+    </script>
 
     <!-- Main Content -->
     <main class="flex-grow container mx-auto px-4 py-8">
