@@ -1,0 +1,8 @@
+--- LOG START ---
+📋 Fetching available models...
+   Found 30 generation models.
+   Candidates: ['models/gemini-2.5-flash', 'models/gemini-2.5-pro', 'models/gemini-2.0-flash', 'models/gemini-2.0-flash-001', 'models/gemini-2.0-flash-exp-image-generation']...
+👉 Trying: models/gemini-2.5-flash (short: gemini-2.5-flash)
+   ✅ SUCCESS! Response: Hi there! How can I help you today?
+
+🎉 FOUND WORKING MODEL: gemini-2.5-flash

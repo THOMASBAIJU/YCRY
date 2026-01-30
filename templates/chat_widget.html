@@ -1,0 +1,220 @@
+<div id="ai-chat-widget">
+    <!-- Floating Toggle Button -->
+    <button id="chat-toggle-btn" onclick="toggleChat()">
+        🤖
+    </button>
+
+    <!-- Chat Window -->
+    <div id="chat-window" class="hidden">
+        <div class="chat-header">
+            <div class="header-info">
+                <span class="bot-avatar">🩺</span>
+                <div>
+                    <h3>Dr. Ycry</h3>
+                    <p class="status">Pediatric Assistant</p>
+                </div>
+            </div>
+            <button onclick="toggleChat()" class="close-btn">&times;</button>
+        </div>
+
+        <div id="chat-messages">
+            <div class="message bot">
+                <p>Hello! I'm here to help with your baby's care. Ask me anything about health, sleep, or nutrition! 👶</p>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <input type="text" id="user-input" placeholder="Ask a question..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="send-btn">➤</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Widget Container */
+    #ai-chat-widget {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Floating Button */
+    #chat-toggle-btn {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+        border: none;
+        color: white;
+        font-size: 30px;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    #chat-toggle-btn:hover {
+        transform: scale(1.1);
+    }
+
+    /* Chat Window */
+    #chat-window {
+        position: absolute;
+        bottom: 80px;
+        right: 0;
+        width: 350px;
+        height: 500px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 30px rgba(0,0,0,0.15);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    #chat-window.hidden {
+        opacity: 0;
+        transform: translateY(20px);
+        pointer-events: none;
+    }
+
+    /* Header */
+    .chat-header {
+        background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+        padding: 15px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .bot-avatar {
+        font-size: 24px;
+        background: rgba(255,255,255,0.2);
+        padding: 8px;
+        border-radius: 50%;
+    }
+
+    .chat-header h3 {
+        margin: 0;
+        font-size: 16px;
+    }
+
+    .status {
+        margin: 0;
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+
+    /* Messages Area */
+    #chat-messages {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        background: #f9f9f9;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .message {
+        max-width: 80%;
+        padding: 10px 15px;
+        border-radius: 15px;
+        font-size: 14px;
+        line-height: 1.4;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.bot {
+        background: white;
+        color: #333;
+        align-self: flex-start;
+        border-bottom-left-radius: 2px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .message.user {
+        background: #FF6B6B;
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 2px;
+        box-shadow: 0 2px 5px rgba(255,107,107,0.3);
+    }
+
+    .message.loading {
+        color: #888;
+        font-style: italic;
+        background: none;
+        box-shadow: none;
+        padding: 5px;
+    }
+
+    /* Input Area */
+    .chat-input-area {
+        padding: 15px;
+        background: white;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+    }
+
+    #user-input {
+        flex: 1;
+        border: 1px solid #ddd;
+        border-radius: 25px;
+        padding: 10px 15px;
+        outline: none;
+        transition: border-color 0.3s;
+    }
+
+    #user-input:focus {
+        border-color: #FF6B6B;
+    }
+
+    #send-btn {
+        background: #FF6B6B;
+        color: white;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: background 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+
+    #send-btn:hover {
+        background: #FF8E53;
+    }
+</style>
+
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
