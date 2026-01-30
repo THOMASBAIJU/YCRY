@@ -74,6 +74,7 @@
                                 <a href="/health" class="block px-4 py-3 text-sm font-bold text-warm-gray hover:bg-warm-coral hover:text-white transition">🩺 Health Check</a>
                             </div>
                         </div>
+                        <a href="{{ url_for('assistant') }}" class="px-4 py-2 rounded-full font-bold text-sm text-warm-coral hover:text-warm-teal hover:bg-white/50 transition">🤖 Dr. AI</a>
                         <a href="/profile" class="ml-2 pl-2 pr-4 py-1.5 rounded-full font-bold text-sm text-warm-gray hover:text-warm-teal hover:bg-white/50 transition flex items-center gap-2">
                             {% if navbar_pic %}
                                 <img src="{{ url_for('static', filename='profile_pics/' + navbar_pic) }}" class="w-8 h-8 rounded-full object-cover border-2 border-warm-teal">

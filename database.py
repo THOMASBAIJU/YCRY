@@ -1,7 +1,9 @@
 import datetime
 import bcrypt
 from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
 import os
+import certifi
 
 # CONFIG
 MONGO_URI = "mongodb+srv://thomasbaiju02_db_user:abm95KG2rEuItPWP@cluster0.9iivpdx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -13,7 +15,11 @@ db = None
 def init_db():
     global client, db
     try:
-        client = MongoClient(MONGO_URI)
+        # Set timeout to 5 seconds and allow invalid certs (for corporate/college networks)
+        client = MongoClient(MONGO_URI, 
+                             tlsCAFile=certifi.where(), 
+                             serverSelectionTimeoutMS=5000,
+                             tlsAllowInvalidCertificates=True)
         db = client[DB_NAME]
         # Quick check
         client.admin.command('ping')
@@ -49,10 +55,16 @@ def create_user(username, password, name):
 
 def login_user(username, password):
     if db is None: init_db()
-    user = db.users.find_one({"_id": username})
-    
-    if user and bcrypt.checkpw(password.encode('utf-8'), user['password']):
-        return user['caregiver_name']
+    try:
+        user = db.users.find_one({"_id": username})
+        
+        if user and bcrypt.checkpw(password.encode('utf-8'), user['password']):
+            return user['caregiver_name']
+    except ServerSelectionTimeoutError:
+        print("❌ DB Timeout during login")
+        return "DB_ERROR"
+    except Exception as e:
+        print(f"Login Error: {e}")
     return None
 
 # --- PROFILE FUNCTIONS ---

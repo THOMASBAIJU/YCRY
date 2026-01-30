@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="assistant-container">
+    <div class="ai-header">
+        <h1>Dr. Ycry</h1>
+        <p>Your AI Pediatric Companion</p>
+    </div>
+
+    <!-- Avatar / Status -->
+    <div class="avatar-section">
+        <div class="avatar-circle" id="avatar">
+            <span class="avatar-icon">🩺</span>
+        </div>
+        <p id="status-text">Tap the mic to talk...</p>
+    </div>
+
+    <!-- Voice Controls -->
+    <div class="controls-section">
+        <button id="mic-btn" onclick="toggleListening()">
+            🎤
+        </button>
+        
+        <div class="options-row">
+            <label class="toggle-option">
+                <input type="checkbox" id="continuous-toggle">
+                <span>♾️ Continuous</span>
+            </label>
+            <label class="toggle-option">
+                <input type="checkbox" id="voice-reply-toggle" checked>
+                <span>🔊 Voice Reply</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Chat Log & Text Input -->
+    <div class="chat-wrapper">
+        <div class="chat-log" id="chat-log">
+            <div class="msg bot">
+                Hi {{ session['real_name'] }}! I'm here for you. How is the baby?
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="text-input" placeholder="Type a message..." onkeypress="handleKey(event)">
+            <button onclick="sendText()">➤</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .assistant-container {
+        max-width: 600px;
+        margin: 40px auto;
+        text-align: center;
+        padding: 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .ai-header h1 {
+        font-size: 2.5rem;
+        color: #FF6B6B;
+        margin-bottom: 5px;
+    }
+
+    /* Avatar Animation */
+    .avatar-section { margin: 30px 0; }
+
+    .avatar-circle {
+        width: 120px;
+        height: 120px;
+        background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+        border-radius: 50%;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 60px;
+        box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
+        transition: transform 0.3s;
+    }
+
+    /* States */
+    .avatar-circle.listening { animation: pulse 1.5s infinite; background: #4ECDC4; } /* Green */
+    .avatar-circle.waiting { animation: pulse 2s infinite; background: #FFD93D; } /* Yellow (Pause) */
+    .avatar-circle.speaking { animation: bounce 0.5s infinite alternate; }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+        70% { box-shadow: 0 0 0 20px rgba(0, 0, 0, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+    }
+    @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
+
+    #status-text { margin-top: 20px; color: #666; font-weight: 500; height: 20px; }
+
+    /* Controls */
+    #mic-btn {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid #ddd;
+        font-size: 35px;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    #mic-btn:hover { transform: translateY(-2px); border-color: #FF6B6B; color: #FF6B6B; }
+    #mic-btn.active { background: #FF6B6B; color: white; border-color: #FF6B6B; }
+
+    .options-row {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+    .toggle-option { display: flex; align-items: center; gap: 5px; color: #666; font-size: 14px; cursor: pointer; }
+
+    /* Chat Area */
+    .chat-wrapper {
+        margin-top: 30px;
+        background: white;
+        border-radius: 15px;
+        border: 1px solid #eee;
+        overflow: hidden;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    }
+
+    .chat-log {
+        padding: 20px;
+        height: 300px;
+        overflow-y: auto;
+        text-align: left;
+        background: #f8f9fa;
+    }
+
+    .msg { margin-bottom: 10px; padding: 10px 15px; border-radius: 10px; max-width: 80%; line-height: 1.4; }
+    .msg.user { background: #FF6B6B; color: white; margin-left: auto; border-bottom-right-radius: 2px; }
+    .msg.bot { background: white; color: #333; border: 1px solid #e0e0e0; border-bottom-left-radius: 2px; }
+
+    .input-area {
+        display: flex;
+        padding: 10px;
+        background: white;
+        border-top: 1px solid #eee;
+    }
+    .input-area input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 20px;
+        outline: none;
+    }
+    .input-area button {
+        background: none;
+        border: none;
+        color: #FF6B6B;
+        font-size: 20px;
+        margin-left: 10px;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    // --- VARIABLES ---
+    const micBtn = document.getElementById('mic-btn');
+    const avatar = document.getElementById('avatar');
+    const statusText = document.getElementById('status-text');
+    const chatLog = document.getElementById('chat-log');
+    const continuousToggle = document.getElementById('continuous-toggle');
+    const voiceReplyToggle = document.getElementById('voice-reply-toggle');
+    
+    let recognition;
+    let isSpeaking = false;
+    let isListening = false;
+    let shouldRestart = false; // Used for "Continuous Mode" loop
+    let silenceTimer = null;
+    let speechBuffer = ""; // Stores text while user pauses
+
+    // --- SETUP VOICE ---
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = true; // IMPORTANT: Keep listening even after pauses
+        recognition.lang = 'en-IN'; 
+        recognition.interimResults = false;
+
+        recognition.onstart = function() {
+            isListening = true;
+            micBtn.classList.add('active');
+            avatar.classList.add('listening');
+            avatar.classList.remove('waiting');
+            statusText.textContent = "Listening...";
+        };
+
+        recognition.onend = function() {
+            isListening = false;
+            micBtn.classList.remove('active');
+            avatar.classList.remove('listening');
+            avatar.classList.remove('waiting');
+            
+            // Auto-Restart Loop if Continuous is ON (and we weren't just stopped to speak)
+            if (shouldRestart && continuousToggle.checked && !isSpeaking) {
+                statusText.textContent = "Resuming loop...";
+                setTimeout(startRecognition, 100); 
+            } else {
+                statusText.textContent = "Tap mic to talk";
+            }
+        };
+
+        recognition.onresult = function(event) {
+            // Get latest chunk
+            const currentObj = event.results[event.results.length - 1];
+            const transcript = currentObj[0].transcript;
+            
+            if (currentObj.isFinal) {
+                speechBuffer += transcript + ". ";
+                statusText.textContent = "Hearing you... (Pause to send)";
+                avatar.classList.remove('listening');
+                avatar.classList.add('waiting'); // Yellow state
+                
+                // RESET TIMER: Wait 2.5 seconds for more speech
+                clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(() => {
+                    // Time's up! Send whatever we have.
+                    finishUserSpeech();
+                }, 2500);
+            }
+        };
+        
+        recognition.onerror = function(event) {
+            // If random no-speech error, just ignore
+            if(event.error === 'no-speech') return; 
+            statusText.textContent = "Error: " + event.error;
+        };
+
+    } else {
+        alert("Voice not supported. Try Chrome.");
+    }
+
+    function toggleListening() {
+        if (isListening) {
+             shouldRestart = false;
+             recognition.stop();
+             clearTimeout(silenceTimer);
+        } else {
+             startRecognition();
+        }
+    }
+
+    function startRecognition() {
+        if (isSpeaking) return;
+        try {
+            speechBuffer = ""; // Reset buffer
+            recognition.start();
+            shouldRestart = true;
+        } catch(e) {}
+    }
+
+    function finishUserSpeech() {
+        // Stop listening formally so we can process
+        shouldRestart = false; // Pause loop
+        recognition.stop();
+        
+        if (speechBuffer.trim().length > 0) {
+            const finalTxt = speechBuffer.trim();
+            addMessage(finalTxt, 'user');
+            sendToAI(finalTxt);
+        }
+        speechBuffer = "";
+    }
+
+    // --- TEXT INPUT ---
+    function handleKey(e) { if(e.key === 'Enter') sendText(); }
+    
+    function sendText() {
+        const input = document.getElementById('text-input');
+        const text = input.value.trim();
+        if(!text) return;
+        
+        input.value = '';
+        addMessage(text, 'user');
+        
+        if (isListening) {
+            shouldRestart = continuousToggle.checked;
+            recognition.stop();
+        }
+        sendToAI(text);
+    }
+
+    // --- AI LOGIC ---
+    async function sendToAI(text) {
+        statusText.textContent = "Thinking...";
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ message: text })
+            });
+            const data = await response.json();
+            
+            if (data.response) {
+                addMessage(data.response, 'bot');
+                statusText.textContent = "Replying...";
+                
+                if (voiceReplyToggle.checked) {
+                    speak(data.response);
+                } else {
+                    if(continuousToggle.checked) {
+                        shouldRestart = true;
+                        startRecognition();
+                    }
+                }
+            }
+        } catch (e) {
+            statusText.textContent = "Error";
+        }
+    }
+
+    function addMessage(text, sender) {
+        const div = document.createElement('div');
+        div.classList.add('msg', sender);
+        div.textContent = text;
+        chatLog.appendChild(div);
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    // --- SPEECH OUTPUT (SMART AUTO-SELECT) ---
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // AUTO-SELECT BEST VOICE
+        const voices = window.speechSynthesis.getVoices();
+        let preferredVoice = null;
+
+        // 1. Google US English (Best quality on Chrome)
+        preferredVoice = voices.find(v => v.name === 'Google US English');
+        
+        // 2. Microsoft Zira (Good on Windows)
+        if (!preferredVoice) {
+            preferredVoice = voices.find(v => v.name.includes('Zira'));
+        }
+        
+        // 3. Any Female Voice
+        if (!preferredVoice) {
+            preferredVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Samantha'));
+        }
+
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+            console.log("Selected Voice:", preferredVoice.name);
+        }
+        
+        // Soft & Calm Settings
+        utterance.pitch = 1.0; // Natural (1.1 can sound synthetic)
+        utterance.rate = 1.0;  // Normal speed (0.9 is too slow for long text)
+        
+        isSpeaking = true;
+        shouldRestart = continuousToggle.checked; // Remember to restart loop
+        
+        utterance.onstart = () => avatar.classList.add('speaking');
+        
+        utterance.onend = () => {
+            isSpeaking = false;
+            avatar.classList.remove('speaking');
+            
+            // Resume Loop
+            if (shouldRestart) {
+                setTimeout(startRecognition, 800); // Small breath before listening
+            }
+        };
+        
+        window.speechSynthesis.speak(utterance);
+    }
+    
+    window.speechSynthesis.getVoices();
+</script>
+{% endblock %}

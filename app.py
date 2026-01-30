@@ -11,7 +11,8 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 import database as db
 from werkzeug.utils import secure_filename
-
+import google.generativeai as genai
+import threading
 app = Flask(__name__)
 app.secret_key = "SUPER_SECRET_KEY_YCRY"
 
@@ -27,15 +28,23 @@ os.environ["PATH"] += os.pathsep + r"C:\ffmpeg\bin"
 db.init_db()
 
 # --- LOAD AI ---
-MODEL_PATH = "model_brain.h5"
+# --- CONFIG AI ---
+GEMINI_API_KEY = "AIzaSyAS0ZyP5xXhalteK_XFdC9u5URTYmsvePU"
+genai.configure(api_key=GEMINI_API_KEY)
+
+# --- LOAD AI ---
+MODEL_PATH = os.path.join(os.getcwd(), "model_brain.h5")
 ai_model = None
-try:
-    if os.path.exists(MODEL_PATH):
+plot_lock = threading.Lock()
+
+print(f"🔍 Checking Model Path: {MODEL_PATH}")
+if os.path.exists(MODEL_PATH):
+    print("✅ File Found. Attempting load...")
+    try:
         ai_model = load_model(MODEL_PATH)
-        print("✅ AI Model Loaded")
+        print("✅ AI Model Loaded Successfully!")
         
         # --- WARMUP ---
-        # Run a dummy prediction to initialize the graph
         try:
             print("⏳ Warming up AI model...")
             dummy_input = np.zeros((1, 64, 64, 3))
@@ -43,9 +52,13 @@ try:
             print("🔥 AI Model Warmed Up & Ready")
         except Exception as e:
             print(f"⚠️ Model Warmup Failed: {e}")
-
-except Exception as e:
-    print(f"❌ Model Error: {e}")
+            
+    except Exception as e:
+        print(f"❌ Keras Load Model Failed: {e}")
+        import traceback
+        traceback.print_exc()
+else:
+    print("❌ Model File NOT FOUND at path!")
 
 # --- HELPERS ---
 def calculate_age(dob_str):
@@ -227,11 +240,14 @@ def login():
         username = request.form['username']
         password = request.form['password']
         name = db.login_user(username, password)
-        if name:
+        if name == "DB_ERROR":
+            flash("⚠️ Database connection failed. Please check your internet or whitelist your IP.")
+        elif name:
             session['user'] = username
             session['real_name'] = name
             return redirect(url_for('home'))
-        flash("Invalid Username or Password")
+        else:
+            flash("Invalid Username or Password")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -345,6 +361,8 @@ def cry():
     # Initialize variables for template rendering
     pred, conf, advice = None, 0, ""
 
+    print(f"🔍 CRY ROUTE ACCESSED. AI_MODEL STATUS: {ai_model}")
+
     if request.method == 'POST':
         import traceback
         try:
@@ -371,8 +389,8 @@ def cry():
                     print(f"File Save Error: {str(e)}")
                     return jsonify({"error": f"Failed to save file: {str(e)}"}), 500
 
-                # Clear any existing plots
-                plt.close('all')
+                # Lock plotting to prevent thread issues
+                # plt.close('all') moved inside lock downstream
                 
                 # Load audio
                 try:
@@ -383,13 +401,15 @@ def cry():
 
                 # Generate Spectrogram
                 try:
-                    fig = plt.figure(figsize=(4, 4))
-                    librosa.display.specshow(librosa.power_to_db(librosa.feature.melspectrogram(y=y, sr=sr), ref=np.max), sr=sr)
-                    plt.axis('off')
-                    
-                    plt.savefig(img_path, bbox_inches='tight', pad_inches=0)
-                    plt.close(fig)
-                    plt.close('all')
+                    with plot_lock:
+                        plt.close('all')
+                        fig = plt.figure(figsize=(4, 4))
+                        librosa.display.specshow(librosa.power_to_db(librosa.feature.melspectrogram(y=y, sr=sr), ref=np.max), sr=sr)
+                        plt.axis('off')
+                        
+                        plt.savefig(img_path, bbox_inches='tight', pad_inches=0)
+                        plt.close(fig)
+                        plt.close('all')
                 except Exception as plot_error:
                       print(f"Plot Error: {str(plot_error)}\n{traceback.format_exc()}")
                       return jsonify({"error": f"Error generating spectrogram: {str(plot_error)}"}), 500
@@ -423,7 +443,7 @@ def cry():
             print(f"General Error: {str(e)}\n{traceback.format_exc()}")
             return jsonify({"error": f"An unexpected server error occurred: {str(e)}"}), 500
         finally:
-             plt.close('all')
+             # plt.close('all') # Unsafe in threaded env without lock
              # Cleanup temp files
              try:
                  if 'audio_path' in locals() and os.path.exists(audio_path):
@@ -520,6 +540,103 @@ def health():
     warnings = get_warning_signs()
     return render_template('health.html', warnings=warnings, baby_name=prof['baby_name'])
 
+@app.route('/assistant')
+def assistant():
+    if 'user' not in session: return redirect(url_for('login'))
+    return render_template('ai_assistant.html')
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    if 'user' not in session:
+        return jsonify({"error": "Please login first."}), 401
+
+    data = request.json
+    user_msg = data.get('message', '')
+
+    # 1. Get Profile Context
+    profile = db.get_profile(session['user'])
+    if not profile:
+        return jsonify({"error": "Profile not found"}), 400
+
+    baby_name = profile['baby_name']
+    dob_str = profile['dob']
+    age_months = calculate_age(dob_str)
+    
+    # 2. Get Growth History
+    growth_history = db.get_growth_history(session['user'])
+    growth_txt = "No records yet."
+    if growth_history:
+        # Format: "2023-01-01: 4.5kg, 55cm"
+        growth_entries = [f"- {g['date']}: {g['weight']}kg, {g['height']}cm" for g in growth_history[-10:]] # Last 10
+        growth_txt = "\n".join(growth_entries)
+
+    # 3. Get Vaccine Status
+    completed_vax = db.get_completed_vaccines(session['user'])
+    schedule, _ = get_vaccine_schedule(dob_str, completed_vax)
+    
+    overdue = []
+    upcoming = []
+    for milestone in schedule:
+        if milestone['status'] == 'Overdue':
+            missing = [s['name'] for s in milestone['shots'] if not s['done']]
+            if missing: overdue.extend(missing)
+        elif milestone['status'] == 'Upcoming':
+            upcoming.extend([s['name'] for s in milestone['shots']])
+            
+    vax_txt = f"Completed: {', '.join(completed_vax) if completed_vax else 'None'}\n"
+    vax_txt += f"OVERDUE: {', '.join(overdue) if overdue else 'None'}\n"
+    vax_txt += f"Next Due: {upcoming[0] if upcoming else 'All likely completed'}"
+
+    # 4. Manage Session Memory
+    if 'chat_history' not in session:
+        session['chat_history'] = []
+    
+    recent_history = session['chat_history'][-6:] 
+    history_text = "\n".join([f"{msg['role']}: {msg['text']}" for msg in recent_history])
+
+    # 5. Build Medical System Prompt
+    system_prompt = f"""
+    You are Dr. Ycry, an expert Pediatric Nurse Assistant.
+    You are caring for a baby named {baby_name}, who is {age_months} months old.
+    
+    === MEDICAL FILE ===
+    [GROWTH HISTORY]
+    {growth_txt}
+
+    [VACCINATION STATUS]
+    {vax_txt}
+
+    [CONTEXT]
+    - Location: India 🇮🇳 (Emergency: 112/102).
+    - Culture: Respect Indian norms.
+
+    RULES:
+    1. ANALYZE the medical file. If asked about growth, look at the specific numbers in [GROWTH HISTORY].
+    2. MONITOR VACCINES. If {baby_name} has [OVERDUE] vaccines, gently remind the parent to schedule them.
+    3. ONLY answer pediatric questions.
+    4. Be warm, nurturing, and concise.
+    
+    CHAT HISTORY:
+    {history_text}
+    
+    User Query: {user_msg}
+    """
+
+    try:
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content(system_prompt)
+        ai_text = response.text.replace("*", "") 
+
+        session['chat_history'].append({"role": "User", "text": user_msg})
+        session['chat_history'].append({"role": "Dr. Ycry", "text": ai_text})
+        session.modified = True
+        
+        return jsonify({"response": ai_text})
+
+    except Exception as e:
+        print(f"Gemini Error: {e}")
+        return jsonify({"error": "AI Brain is tired."}), 500
+
 # --- NEW HELPERS ---
 def get_nutrition_guide(age):
     if age < 6:
@@ -587,4 +704,4 @@ def get_warning_signs():
     ]
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False, threaded=False)
+    app.run(debug=True, use_reloader=False, threaded=True)
