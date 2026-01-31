@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv() # Load env vars from .env file
 import datetime
 import numpy as np
 import librosa
@@ -13,8 +15,10 @@ import database as db
 from werkzeug.utils import secure_filename
 import google.generativeai as genai
 import threading
+import json
 app = Flask(__name__)
 app.secret_key = "SUPER_SECRET_KEY_YCRY"
+# Reload Trigger: 1
 
 # CONFIG
 PROFILE_FOLDER = 'static/profile_pics'
@@ -29,7 +33,13 @@ db.init_db()
 
 # --- LOAD AI ---
 # --- CONFIG AI ---
-GEMINI_API_KEY = "AIzaSyAS0ZyP5xXhalteK_XFdC9u5URTYmsvePU"
+from dotenv import load_dotenv
+load_dotenv() # Load environment variables
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    print("⚠️ WARNING: GEMINI_API_KEY not found in .env file!")
+    
 genai.configure(api_key=GEMINI_API_KEY)
 
 # --- LOAD AI ---
@@ -158,6 +168,7 @@ def get_vaccine_schedule(dob_str, completed_list):
         schedule.append({
             "milestone": label, 
             "date": due.strftime("%d %b %Y"), 
+            "raw_date": due.strftime("%Y-%m-%d"), # For Calendar Link
             "shots": shots_data, 
             "status": row_status,
             "bg_color": row_bg,
@@ -479,8 +490,55 @@ def growth():
     
     # 1. Handle Physical Growth (Weight/Height)
     if request.method == 'POST':
-        db.add_growth_record(session['user'], float(request.form['weight']), float(request.form['height']))
-        flash("✅ Physical growth recorded!")
+        try:
+            # Handle JSON or Form Data
+            w = 0
+            h = 0
+            
+            if request.is_json:
+                data = request.get_json(silent=True) or {}
+                w = float(data.get('weight', 0))
+                h = float(data.get('height', 0))
+            
+            # Fallback to form data if JSON didn't provide values
+            if w == 0 and h == 0:
+                w = float(request.form.get('weight', 0))
+                h = float(request.form.get('height', 0))
+
+            if w > 0 and h > 0:
+                print(f"Adding Growth: {w}kg, {h}cm")
+                db.add_growth_record(session['user'], w, h)
+                msg = "✅ Physical growth recorded!"
+                success = True
+            else:
+                msg = "❌ Invalid values."
+                success = False
+                
+            # If AJAX request, return JSON
+            if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                # Get updated history for chart
+                history = db.get_growth_history(session['user'])
+                dates = [r['date'] for r in history]
+                weights = [r['weight'] for r in history]
+                heights = [r['height'] for r in history]
+                
+                return jsonify({
+                    "success": success,
+                    "message": msg,
+                    "latest": [w, h, str(datetime.date.today())] if success else None,
+                    "dates": dates,
+                    "weights": weights,
+                    "heights": heights
+                })
+                
+            flash(msg)
+
+        except Exception as e:
+            print(f"Growth Error: {e}")
+            if request.is_json: return jsonify({"success": False, "message": str(e)}), 500
+            flash("❌ Error saving record.")
+        
+        return redirect(url_for('growth'))
         
     latest = db.get_latest_growth(session['user'])
     age = calculate_age(prof['dob'])
@@ -596,7 +654,7 @@ def api_chat():
 
     # 5. Build Medical System Prompt
     system_prompt = f"""
-    You are Dr. Ycry, an expert Pediatric Nurse Assistant.
+    You are Dr. Ycry, a warm, caring, and highly experienced pediatrician who loves helping parents.
     You are caring for a baby named {baby_name}, who is {age_months} months old.
     
     === MEDICAL FILE ===
@@ -608,13 +666,15 @@ def api_chat():
 
     [CONTEXT]
     - Location: India 🇮🇳 (Emergency: 112/102).
-    - Culture: Respect Indian norms.
+    - Culture: Respect Indian norms. Be supportive of the family structure.
 
     RULES:
-    1. ANALYZE the medical file. If asked about growth, look at the specific numbers in [GROWTH HISTORY].
-    2. MONITOR VACCINES. If {baby_name} has [OVERDUE] vaccines, gently remind the parent to schedule them.
-    3. ONLY answer pediatric questions.
-    4. Be warm, nurturing, and concise.
+    1. BE HUMAN & WARM: Speak like a kind doctor, not a robot. Use phrases like "I understand," "That sounds tough," or "You're doing a great job."
+    2. USE NAMES: Refer to the baby as {baby_name} naturally in conversation.
+    3. ANALYZE GROWTH: If asked about weight/height, look at [GROWTH HISTORY] and give specific feedback.
+    4. VACCINE CHECK: If {baby_name} has [OVERDUE] vaccines, gently and kindly remind the parent to schedule them soon for safety.
+    5. SCOPE: ONLY answer pediatric/parenting questions.
+    6. TONE: Supportive, reassuring, and concise (keep answers under 3-4 sentences unless detailed advice is needed).
     
     CHAT HISTORY:
     {history_text}
@@ -622,20 +682,203 @@ def api_chat():
     User Query: {user_msg}
     """
 
-    try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        response = model.generate_content(system_prompt)
-        ai_text = response.text.replace("*", "") 
+    # List of models to try in order of priority (Prioritizing LITE for quota)
+    print("🚀 Using Updated Model List (Lite)")
+    models_to_try = [
+        'gemini-2.0-flash-lite',          # Try Lite first (usually higher limits)
+        'gemini-flash-latest',            # Generic alias
+        'gemini-2.0-flash',               # Fancy one
+        'gemini-2.5-flash-lite',          # Newer Lite
+        'gemini-2.5-flash'                # Newer Fancy (likely capped)
+    ]
 
-        session['chat_history'].append({"role": "User", "text": user_msg})
-        session['chat_history'].append({"role": "Dr. Ycry", "text": ai_text})
-        session.modified = True
+    last_error = None
+
+    for model_name in models_to_try:
+        try:
+            print(f"🤖 Trying AI Model: {model_name}...")
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(system_prompt)
+            ai_text = response.text.replace("*", "") 
+
+            session['chat_history'].append({"role": "User", "text": user_msg})
+            session['chat_history'].append({"role": "Dr. Ycry", "text": ai_text})
+            session.modified = True
+            
+            print(f"✅ Success with {model_name}!")
+            return jsonify({"response": ai_text})
+
+        except Exception as e:
+            print(f"⚠️ Failed with {model_name}: {e}")
+            last_error = e
+            continue # Try next model
+
+    # If all models fail
+    print(f"❌ All models failed. Last error: {last_error}")
+    return jsonify({"error": f"AI Error after trying multiple models. Last error: {str(last_error)}"}), 500
+
+@app.route('/api/analyze_growth', methods=['POST'])
+def analyze_growth():
+    if 'user' not in session: return jsonify({"error": "Login required"}), 401
+    
+    prof = db.get_profile(session['user'])
+    if not prof: return jsonify({"error": "Profile not found"}), 400
+    
+    history = db.get_growth_history(session['user'])
+    if not history: return jsonify({"analysis": "No growth records found yet. Add some measurements above!"})
+    
+    # Format data
+    data_points = "\n".join([f"- {h['date']}: {h['weight']}kg, {h['height']}cm" for h in history])
+    age_months = calculate_age(prof['dob'])
+    
+    prompt = f"""
+    Act as a friendly pediatrician. 
+    Child: {prof['baby_name']}, {age_months} months old.
+    Gender: {prof['gender']}.
+    Birth: {prof['weight_birth']}kg, {prof['height_birth']}cm.
+    
+    Growth History:
+    {data_points}
+    
+    Analyze this growth trend. 
+    1. Is the weight gain steady?
+    2. Is the height increase normal?
+    3. Calculate latest BMI if possible.
+    4. Give 1 one-sentence tip for this age.
+    
+    Keep the tone encouraging. Max 4-5 sentences.
+    """
+    
+    # Reuse the same model fallback logic
+    # Reuse the same model fallback logic (Prioritizing LITE for quota)
+    models_to_try = [
+        'gemini-2.0-flash-lite',          # Try Lite first (usually higher limits)
+        'gemini-flash-latest',            # Generic alias
+        'gemini-2.0-flash',               # Fancy one
+        'gemini-2.5-flash-lite',          # Newer Lite
+        'gemini-2.5-flash'                # Newer Fancy (likely capped)
+
+
         
-        return jsonify({"response": ai_text})
+    ]
+    
+    last_error = None
 
-    except Exception as e:
-        print(f"Gemini Error: {e}")
-        return jsonify({"error": "AI Brain is tired."}), 500
+    for model_name in models_to_try:
+        try:
+            print(f"🤖 [Analysis] Trying AI Model: {model_name}...")
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            print(f"✅ [Analysis] Success with {model_name}!")
+            return jsonify({"analysis": response.text.replace("*", "")})
+        except Exception as e:
+            print(f"⚠️ [Analysis] Failed with {model_name}: {e}")
+            last_error = e
+            continue
+            
+    print(f"❌ [Analysis] All models failed. Last error: {last_error}")
+    return jsonify({"analysis": f"AI Service Currently Unavailable. (Error: {str(last_error)})"}), 500
+
+@app.route('/api/nutrition_ai', methods=['POST'])
+def nutrition_ai():
+    if 'user' not in session: return jsonify({"error": "Login required"}), 401
+    
+    prof = db.get_profile(session['user'])
+    if not prof: return jsonify({"error": "Profile not found"}), 400
+    
+    data = request.json
+    action = data.get('action')
+    query = data.get('query', '')
+    age_months = calculate_age(prof['dob'])
+    
+    if action == 'check_safety':
+        prompt = f"""
+        Act as a pediatric nutritionist.
+        Food: "{query}"
+        Child Age: {age_months} months.
+        
+        Is this food safe? 
+        1. Status: SAFE / CAUTION / UNSAFE / AVOID.
+        2. Preparation: How to serve safely (e.g. mash, steam).
+        3. Benefits: Key vitamin/nutrient (1-2 words).
+        
+        Format as JSON: {{ "status": "...", "prep": "...", "benefit": "..." }}
+        """
+        
+    elif action == 'meal_plan':
+        prompt = f"""
+        Create a 1-day meal plan for a {age_months} month old baby.
+        Culture: Indian/Global mix.
+        Vegetarian: No (include eggs/chicken if age appropriate).
+        
+        Format as JSON array of objects: 
+        [ {{ "meal": "Breakfast", "food": "...", "desc": "..." }}, ... ]
+        """
+        
+    elif action == 'recipe':
+        prompt = f"""
+        Give a simple baby recipe for: "{query}".
+        Age: {age_months} months.
+        Keep it very simple (3-4 steps).
+        Format as JSON: {{ "title": "...", "ingredients": ["..."], "steps": ["..."] }}
+        """
+    else:
+        return jsonify({"error": "Invalid action"}), 400
+
+    # --- ROBUST AI FALLBACK SYSTEM (Keys x Models) ---
+    
+    # 1. Gather all potential Google Keys from Environment
+    potential_keys = []
+    
+    # Add standard keys (SUPPORT GEMINI_Naming too!)
+    if os.getenv("GOOGLE_API_KEY"): potential_keys.append(os.getenv("GOOGLE_API_KEY"))
+    if os.getenv("GEMINI_API_KEY"): potential_keys.append(os.getenv("GEMINI_API_KEY"))
+    if os.getenv("NUTRITION_API_KEY"): potential_keys.append(os.getenv("NUTRITION_API_KEY"))
+    
+    # Filter for valid Google Keys (Start with AIza)
+    valid_keys = [k for k in potential_keys if k and k.startswith("AIza")]
+    
+    # Deduplicate
+    valid_keys = list(set(valid_keys))
+    
+    if not valid_keys:
+        return jsonify({"error": "No valid Google API Keys found. Check .env for GEMINI_API_KEY"}), 500
+
+    # 2. Define Models to Try
+    models_to_try = [
+        'gemini-2.0-flash-lite',
+        'gemini-2.0-flash',
+        'gemini-flash-latest',
+        'gemini-1.5-flash',
+        'gemini-pro'
+    ]
+    
+    last_error = None
+    
+    # 3. Matrix Execution: Try Every Key with Every Model
+    for key in valid_keys:
+        genai.configure(api_key=key)
+        
+        for model_name in models_to_try:
+            try:
+                # print(f"🤖 Trying Key ending in ...{key[-4:]} with Model {model_name}")
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+                
+                # If we get here, it worked!
+                # Restore default key for other parts of app if needed, or leave it.
+                # (Ideally usage is localized, but for global config we leave it as last working)
+                return jsonify(json.loads(response.text))
+                
+            except Exception as e:
+                # print(f"⚠️ Failed: Key ...{key[-4:]} | Model {model_name} | Error: {e}")
+                last_error = e
+                # Check if it's a key error (400/403) -> break inner loop to switch key
+                if "API_KEY" in str(e) or "400" in str(e) or "403" in str(e):
+                    break # Key is bad, try next key
+                continue # Model might be bad, try next model with same key
+
+    return jsonify({"error": f"AI unavailable. (Last Error: {str(last_error)})"}), 500
 
 # --- NEW HELPERS ---
 def get_nutrition_guide(age):

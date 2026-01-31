@@ -15,10 +15,11 @@ db = None
 def init_db():
     global client, db
     try:
-        # Set timeout to 5 seconds and allow invalid certs (for corporate/college networks)
+        # Set timeout to 20 seconds to allow for slower networks
         client = MongoClient(MONGO_URI, 
                              tlsCAFile=certifi.where(), 
-                             serverSelectionTimeoutMS=5000,
+                             serverSelectionTimeoutMS=20000,
+                             connectTimeoutMS=20000,
                              tlsAllowInvalidCertificates=True)
         db = client[DB_NAME]
         # Quick check
@@ -107,16 +108,23 @@ def add_growth_record(username, weight, height):
     if db is None: init_db()
     today = str(datetime.date.today())
     
-    record = {
-        "date": today,
-        "weight": weight,
-        "height": height
-    }
+    # Check if a record for today already exists
+    query = {"_id": username, "growth.date": today}
+    update = {"$set": {"growth.$.weight": weight, "growth.$.height": height}}
     
-    db.users.update_one(
-        {"_id": username},
-        {"$push": {"growth": record}}
-    )
+    result = db.users.update_one(query, update)
+    
+    # If no record matched (result.matched_count == 0), push a new one
+    if result.matched_count == 0:
+        record = {
+            "date": today,
+            "weight": weight,
+            "height": height
+        }
+        db.users.update_one(
+            {"_id": username},
+            {"$push": {"growth": record}}
+        )
 
 def get_latest_growth(username):
     if db is None: init_db()

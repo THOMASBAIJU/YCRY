@@ -58,7 +58,20 @@
                             </div>
                         </td>
                         <td class="py-5 px-6 text-sm text-warm-dark">
-                            {{ item.date }}
+                            <div class="font-bold">{{ item.date }}</div>
+                            
+                            {% if item.status != 'Completed' %}
+                            <div class="flex gap-2 mt-2">
+                                <!-- Google Calendar -->
+                                {% set google_date = item.raw_date|replace('-', '') %}
+                                <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Vaccine: {{ item.milestone }}&dates={{ google_date }}/{{ google_date }}&details=Reminder for {{ item.milestone }} via YCRY"
+                                   target="_blank"
+                                   class="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-1 rounded border border-blue-200 flex items-center gap-1"
+                                   title="Add to Google Calendar">
+                                   📅 Add to Google Calendar
+                                </a>
+                            </div>
+                            {% endif %}
                         </td>
                          <td class="py-5 px-6 text-center">
                             {% if item.status == 'Completed' %}
