@@ -2,120 +2,291 @@
 
 {% block content %}
 <div class="assistant-container">
-    <div class="ai-header">
-        <h1>Dr. Ycry</h1>
-        <p>Your AI Pediatric Companion</p>
-    </div>
-
-    <!-- Avatar / Status -->
-    <div class="avatar-section">
-        <div class="avatar-circle" id="avatar">
-            <span class="avatar-icon">🩺</span>
-        </div>
-        <p id="status-text">Tap the mic to talk...</p>
-    </div>
-
-    <!-- Voice Controls -->
-    <div class="controls-section">
-        <button id="mic-btn" onclick="toggleListening()">
-            🎤
-        </button>
+    <div class="split-layout">
         
-        <div class="options-row">
-            <label class="toggle-option">
-                <input type="checkbox" id="continuous-toggle">
-                <span>♾️ Continuous</span>
-            </label>
-            <label class="toggle-option">
-                <input type="checkbox" id="voice-reply-toggle" checked>
-                <span>🔊 Voice Reply</span>
-            </label>
-        </div>
-    </div>
+        <!-- LEFT: Chat Interface -->
+        <div class="chat-section">
+            <div class="ai-header-left">
+                <h1>Dr. Ycry</h1>
+                <p>Your AI Pediatric Companion</p>
+            </div>
 
-    <!-- Chat Log & Text Input -->
-    <div class="chat-wrapper">
-        <div class="chat-log" id="chat-log">
-            <div class="msg bot">
-                Hi {{ session['real_name'] }}! I'm here for you. How is the baby?
+            <div class="chat-wrapper">
+                <div class="chat-log" id="chat-log">
+                    <!-- Initial Message with Avatar -->
+                    <div class="msg-row bot">
+                        <div class="msg-avatar">
+                            <img src="{{ url_for('static', filename='images/ai_feature.png') }}" alt="Bot">
+                        </div>
+                        <div class="msg">
+                            Hi {{ session['real_name'] }}! I'm here for you.<br>How is the baby?
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="input-area">
+                    <input type="text" id="text-input" placeholder="Type a message..." onkeypress="handleKey(event)">
+                    <button onclick="sendText()">➤</button>
+                </div>
             </div>
         </div>
-        
-        <div class="input-area">
-            <input type="text" id="text-input" placeholder="Type a message..." onkeypress="handleKey(event)">
-            <button onclick="sendText()">➤</button>
+
+        <!-- RIGHT: Avatar & Controls -->
+        <div class="avatar-section-right">
+            <!-- Avatar (Clickable) -->
+            <div class="avatar-circle-large" id="avatar" onclick="toggleListening()" style="cursor: pointer;" title="Click to Talk">
+                <img src="{{ url_for('static', filename='images/ai_feature.png') }}" alt="Dr. Ycry" class="avatar-img">
+            </div>
+            
+            <div class="status-container">
+                <p id="status-text">Tap Dr YCRY to talk...</p>
+                <div id="wave-animation" class="hidden">
+                    <span>.</span><span>.</span><span>.</span>
+                </div>
+            </div>
+
+            <!-- Quick Action Chips -->
+            <div class="quick-chips-grid">
+                <button class="chip" onclick="sendChip('🍼 Feeding Tips')">🍼 Feeding</button>
+                <button class="chip" onclick="sendChip('😴 Sleep Help')">😴 Sleep</button>
+                <button class="chip" onclick="sendChip('💉 Vaccine Schedule')">💉 Vaccines</button>
+                <button class="chip" onclick="sendChip('🤒 Fever Help')">🤒 Fever</button>
+            </div>
+
+            <!-- Controls Removed as per user request -->
         </div>
+
     </div>
 </div>
 
 <style>
     .assistant-container {
-        max-width: 600px;
+        max-width: 1200px;
         margin: 40px auto;
-        text-align: center;
         padding: 20px;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    .ai-header h1 {
-        font-size: 2.5rem;
-        color: #FF6B6B;
-        margin-bottom: 5px;
+    /* Split Layout */
+    .split-layout {
+        display: flex;
+        gap: 40px;
+        align-items: flex-start; /* Align top */
     }
 
-    /* Avatar Animation */
-    .avatar-section { margin: 30px 0; }
+    /* Quick Chips */
+    .quick-chips-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        width: 100%;
+        max-width: 300px;
+    }
+    .chip {
+        background: white;
+        border: 1px solid #eee;
+        border-radius: 25px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        color: #555;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        font-weight: 600;
+    }
+    .chip:hover {
+        background: #FF6B6B;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(255, 107, 107, 0.2);
+        border-color: #FF6B6B;
+    }
 
-    .avatar-circle {
-        width: 120px;
-        height: 120px;
-        background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+    /* Msg Row for Avatars */
+    .msg-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        max-width: 80%;
+    }
+    .msg-row.user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg-row.bot { align-self: flex-start; }
+
+    .msg-avatar {
+        width: 35px;
+        height: 35px;
         border-radius: 50%;
-        margin: 0 auto;
+        background: #eee;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 60px;
-        box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
-        transition: transform 0.3s;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+        border: 2px solid white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .msg-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    
+    .msg { 
+        padding: 12px 18px; 
+        border-radius: 18px; 
+        line-height: 1.5; 
+        font-size: 0.95rem;
+        position: relative;
+    }
+    .msg-row.user .msg { 
+        background: #4ECDC4; /* Teal for User */
+        color: white; 
+        border-bottom-right-radius: 4px; 
+        box-shadow: 0 4px 15px rgba(78, 205, 196, 0.2);
+    }
+    .msg-row.bot .msg { 
+        background: white; 
+        color: #444; 
+        border: 1px solid #eee; 
+        border-bottom-left-radius: 4px; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
     }
 
-    /* States */
-    .avatar-circle.listening { animation: pulse 1.5s infinite; background: #4ECDC4; } /* Green */
-    .avatar-circle.waiting { animation: pulse 2s infinite; background: #FFD93D; } /* Yellow (Pause) */
-    .avatar-circle.speaking { animation: bounce 0.5s infinite alternate; }
-
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-        70% { box-shadow: 0 0 0 20px rgba(0, 0, 0, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
-    }
-    @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
-
-    #status-text { margin-top: 20px; color: #666; font-weight: 500; height: 20px; }
-
-    /* Controls */
-    #mic-btn {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
+    /* Left Column: Chat */
+    .chat-section {
+        flex: 1.2; /* Takes 60% approx */
         background: white;
-        border: 2px solid #ddd;
-        font-size: 35px;
-        cursor: pointer;
-        transition: all 0.2s;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+        border: 1px solid rgba(255,255,255,0.8);
     }
-    #mic-btn:hover { transform: translateY(-2px); border-color: #FF6B6B; color: #FF6B6B; }
-    #mic-btn.active { background: #FF6B6B; color: white; border-color: #FF6B6B; }
 
-    .options-row {
-        margin-top: 20px;
-        display: flex;
-        justify-content: center;
-        gap: 20px;
+    .ai-header-left h1 {
+        font-size: 2rem;
+        color: #FF6B6B;
+        margin-bottom: 5px;
+        text-align: left;
     }
-    .toggle-option { display: flex; align-items: center; gap: 5px; color: #666; font-size: 14px; cursor: pointer; }
+    .ai-header-left p {
+        text-align: left;
+        color: #888;
+        margin-bottom: 20px;
+    }
+
+    /* Chat Area Updates */
+    .chat-wrapper {
+        margin-top: 0;
+        border: 1px solid #f0f0f0;
+        border-radius: 15px;
+        box-shadow: none; /* Remove duplicate shadow */
+    }
+    .chat-log {
+        height: 500px; /* Taller chat */
+        background: #fdfdfd;
+    }
+
+    /* Right Column: Avatar */
+    .avatar-section-right {
+        flex: 0.8; /* Takes 40% approx */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding-top: 40px;
+        position: sticky;
+        top: 20px;
+    }
+
+    /* Large Avatar */
+    .avatar-circle-large {
+        width: 250px;
+        height: 250px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+        overflow: hidden;
+        border: 6px solid white;
+        position: relative;
+        margin-bottom: 30px;
+        animation: breathe 3s infinite ease-in-out; /* Idle Animation */
+    }
+
+    .avatar-circle-large:hover {
+        transform: scale(1.05); /* Hover effect */
+        border-color: #FFECEC;
+    }
+
+    .avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(1.1);
+    }
+
+    /* Status & Controls */
+    .status-container {
+        min-height: 40px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    #status-text {
+        font-size: 1.1rem;
+        color: #555;
+        font-weight: 600;
+    }
+
+    /* Avatar States (Updated classes) */
+    .avatar-circle-large.listening {
+        animation: pulse-green 1.5s infinite;
+        border-color: #4ECDC4;
+    }
+    .avatar-circle-large.waiting {
+        animation: pulse-yellow 2s infinite;
+        border-color: #FFD93D;
+    }
+    .avatar-circle-large.speaking {
+        animation: bounce-talk 0.5s infinite alternate;
+        border-color: #FF6B6B;
+        box-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+    }
+
+    /* Reuse Animations */
+    @keyframes breathe {
+        0% { transform: scale(1); box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+        50% { transform: scale(1.02); box-shadow: 0 25px 60px rgba(0,0,0,0.15); }
+        100% { transform: scale(1); box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+    }
+
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(78, 205, 196, 0.7); transform: scale(1); }
+        70% { box-shadow: 0 0 0 30px rgba(78, 205, 196, 0); transform: scale(1.02); }
+        100% { box-shadow: 0 0 0 0 rgba(78, 205, 196, 0); transform: scale(1); }
+    }
+    @keyframes pulse-yellow {
+        0% { box-shadow: 0 0 0 0 rgba(255, 217, 61, 0.7); transform: scale(1); }
+        70% { box-shadow: 0 0 0 30px rgba(255, 217, 61, 0); transform: scale(1.02); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 217, 61, 0); transform: scale(1); }
+    }
+    @keyframes bounce-talk {
+        from { transform: scale(1); border-color: #FF6B6B; }
+        to { transform: scale(1.05); border-color: #FF8E53; }
+    }
+
+    /* Responsive: Stack on Mobile */
+    @media (max-width: 900px) {
+        .split-layout {
+            flex-direction: column-reverse; /* Chat on bottom, Avatar on top */
+            align-items: center;
+        }
+        .chat-section, .avatar-section-right {
+            flex: none;
+            width: 100%;
+        }
+        .chat-log { height: 350px; }
+        .avatar-circle-large { width: 180px; height: 180px; }
+    }
+
 
     /* Chat Area */
     .chat-wrapper {
@@ -133,11 +304,12 @@
         overflow-y: auto;
         text-align: left;
         background: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
     }
 
-    .msg { margin-bottom: 10px; padding: 10px 15px; border-radius: 10px; max-width: 80%; line-height: 1.4; }
-    .msg.user { background: #FF6B6B; color: white; margin-left: auto; border-bottom-right-radius: 2px; }
-    .msg.bot { background: white; color: #333; border: 1px solid #e0e0e0; border-bottom-left-radius: 2px; }
+    /* .msg removed - replaced by .msg-row logic */
 
     .input-area {
         display: flex;
@@ -164,72 +336,94 @@
 
 <script>
     // --- VARIABLES ---
-    const micBtn = document.getElementById('mic-btn');
     const avatar = document.getElementById('avatar');
     const statusText = document.getElementById('status-text');
     const chatLog = document.getElementById('chat-log');
-    const continuousToggle = document.getElementById('continuous-toggle');
-    const voiceReplyToggle = document.getElementById('voice-reply-toggle');
+    
+    // User Avatar URL (passed from Flask)
+    // If empty, we use default icon
+    const userPic = "{{ navbar_pic }}";
+    const userAvatarUrl = userPic ? "{{ url_for('static', filename='profile_pics/') }}" + userPic : "";
+
+    // --- SOUND EFFECTS ---
+    // Soft "Ping" (Base64 WAV)
+    const soundStart = new Audio("data:audio/wav;base64,UklGRjoAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ4AAACAgICAgICAgICAgICAgIA=");
+    
+    /* 
+       Note: Real audio files would be better, but we use this silent/short buffer 
+       to just initialize the Audio object logic. 
+       For now, we rely on the visual "Pulse" and the Robot's voice as feedback.
+    */
     
     let recognition;
     let isSpeaking = false;
     let isListening = false;
-    let shouldRestart = false; // Used for "Continuous Mode" loop
+    let shouldRestart = false; 
     let silenceTimer = null;
-    let speechBuffer = ""; // Stores text while user pauses
+    let speechBuffer = ""; 
+
+    // --- QUICK CHIPS ---
+    function sendChip(text) {
+        // Play click sound (optional, reusing start sound)
+        try { soundStart.play(); } catch(e){}
+        
+        addMessage(text, 'user');
+        
+        // Stop listening if active
+        if(isListening) {
+            shouldRestart = true;
+            recognition.stop();
+        }
+        sendToAI(text);
+    }
 
     // --- SETUP VOICE ---
     if ('webkitSpeechRecognition' in window) {
         recognition = new webkitSpeechRecognition();
-        recognition.continuous = true; // IMPORTANT: Keep listening even after pauses
+        recognition.continuous = true; 
         recognition.lang = 'en-IN'; 
         recognition.interimResults = false;
 
         recognition.onstart = function() {
             isListening = true;
-            micBtn.classList.add('active');
             avatar.classList.add('listening');
             avatar.classList.remove('waiting');
             statusText.textContent = "Listening...";
+            try { soundStart.play(); } catch(e){}
         };
 
         recognition.onend = function() {
             isListening = false;
-            micBtn.classList.remove('active');
             avatar.classList.remove('listening');
             avatar.classList.remove('waiting');
             
-            // Auto-Restart Loop if Continuous is ON (and we weren't just stopped to speak)
-            if (shouldRestart && continuousToggle.checked && !isSpeaking) {
+            // Hardcoded Continuous Loop (Stop only if user clicks again)
+            if (shouldRestart && !isSpeaking) {
                 statusText.textContent = "Resuming loop...";
                 setTimeout(startRecognition, 100); 
-            } else {
-                statusText.textContent = "Tap mic to talk";
+            } else if (!shouldRestart) {
+                statusText.textContent = "Tap Dr YCRY to talk";
             }
         };
 
         recognition.onresult = function(event) {
-            // Get latest chunk
             const currentObj = event.results[event.results.length - 1];
             const transcript = currentObj[0].transcript;
             
             if (currentObj.isFinal) {
                 speechBuffer += transcript + ". ";
-                statusText.textContent = "Hearing you... (Pause to send)";
+                statusText.textContent = "Hearing you...";
                 avatar.classList.remove('listening');
-                avatar.classList.add('waiting'); // Yellow state
+                avatar.classList.add('waiting'); 
                 
-                // RESET TIMER: Wait 2.5 seconds for more speech
                 clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(() => {
-                    // Time's up! Send whatever we have.
                     finishUserSpeech();
                 }, 2500);
             }
         };
         
         recognition.onerror = function(event) {
-            // If random no-speech error, just ignore
             if(event.error === 'no-speech') return; 
             statusText.textContent = "Error: " + event.error;
         };
@@ -240,7 +434,7 @@
 
     function toggleListening() {
         if (isListening) {
-             shouldRestart = false;
+             shouldRestart = false; // User explicitly stopped it
              recognition.stop();
              clearTimeout(silenceTimer);
         } else {
@@ -251,15 +445,14 @@
     function startRecognition() {
         if (isSpeaking) return;
         try {
-            speechBuffer = ""; // Reset buffer
+            speechBuffer = ""; 
             recognition.start();
             shouldRestart = true;
         } catch(e) {}
     }
 
     function finishUserSpeech() {
-        // Stop listening formally so we can process
-        shouldRestart = false; // Pause loop
+        shouldRestart = false; // Pause loop to process
         recognition.stop();
         
         if (speechBuffer.trim().length > 0) {
@@ -282,7 +475,7 @@
         addMessage(text, 'user');
         
         if (isListening) {
-            shouldRestart = continuousToggle.checked;
+            shouldRestart = true; 
             recognition.stop();
         }
         sendToAI(text);
@@ -303,76 +496,104 @@
                 addMessage(data.response, 'bot');
                 statusText.textContent = "Replying...";
                 
-                if (voiceReplyToggle.checked) {
-                    speak(data.response);
-                } else {
-                    if(continuousToggle.checked) {
-                        shouldRestart = true;
-                        startRecognition();
-                    }
-                }
+                // Always talk back now
+                speak(data.response);
+            } else if (data.error) {
+                // Handle Backend Error (e.g. API Key invalid)
+                statusText.textContent = "Error: " + data.error;
+                addMessage("⚠️ Error: " + data.error, 'bot');
             }
         } catch (e) {
-            statusText.textContent = "Error";
+            statusText.textContent = "Error: " + e;
+            addMessage("⚠️ System Error: Check console.", 'bot');
         }
     }
 
     function addMessage(text, sender) {
-        const div = document.createElement('div');
-        div.classList.add('msg', sender);
-        div.textContent = text;
-        chatLog.appendChild(div);
+        // Create Row
+        const row = document.createElement('div');
+        row.classList.add('msg-row', sender);
+        
+        // Avatar
+        const avatarDiv = document.createElement('div');
+        avatarDiv.classList.add('msg-avatar');
+        
+        const img = document.createElement('img');
+        if (sender === 'bot') {
+            img.src = "{{ url_for('static', filename='images/ai_feature.png') }}";
+            avatarDiv.appendChild(img);
+        } else {
+            // User Avatar Logic
+            if (userAvatarUrl) {
+                img.src = userAvatarUrl;
+                avatarDiv.appendChild(img);
+            } else {
+               // Default User Icon text if no image
+               avatarDiv.textContent = "👤"; 
+               avatarDiv.style.background = "#fff";
+            }
+        }
+        
+        // Message Bubble
+        const bubble = document.createElement('div');
+        bubble.classList.add('msg');
+        bubble.textContent = text;
+        
+        // Assemble
+        row.appendChild(avatarDiv);
+        row.appendChild(bubble);
+        
+        chatLog.appendChild(row);
         chatLog.scrollTop = chatLog.scrollHeight;
     }
 
-    // --- SPEECH OUTPUT (SMART AUTO-SELECT) ---
+    // --- SPEECH OUTPUT ---
     function speak(text) {
         window.speechSynthesis.cancel();
         
-        const utterance = new SpeechSynthesisUtterance(text);
+        // Make global to prevent Garbage Collection (Common Chrome Bug)
+        window.currentUtterance = new SpeechSynthesisUtterance(text);
         
-        // AUTO-SELECT BEST VOICE
         const voices = window.speechSynthesis.getVoices();
         let preferredVoice = null;
-
-        // 1. Google US English (Best quality on Chrome)
         preferredVoice = voices.find(v => v.name === 'Google US English');
-        
-        // 2. Microsoft Zira (Good on Windows)
-        if (!preferredVoice) {
-            preferredVoice = voices.find(v => v.name.includes('Zira'));
-        }
-        
-        // 3. Any Female Voice
-        if (!preferredVoice) {
-            preferredVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Samantha'));
-        }
+        if (!preferredVoice) preferredVoice = voices.find(v => v.name.includes('Zira'));
+        if (!preferredVoice) preferredVoice = voices.find(v => v.name.includes('Female'));
 
-        if (preferredVoice) {
-            utterance.voice = preferredVoice;
-            console.log("Selected Voice:", preferredVoice.name);
-        }
+        if (preferredVoice) window.currentUtterance.voice = preferredVoice;
         
-        // Soft & Calm Settings
-        utterance.pitch = 1.0; // Natural (1.1 can sound synthetic)
-        utterance.rate = 1.0;  // Normal speed (0.9 is too slow for long text)
+        window.currentUtterance.pitch = 1.0; 
+        window.currentUtterance.rate = 1.0;  
         
         isSpeaking = true;
-        shouldRestart = continuousToggle.checked; // Remember to restart loop
+        shouldRestart = true; // Ensure we know to restart after this
         
-        utterance.onstart = () => avatar.classList.add('speaking');
-        
-        utterance.onend = () => {
-            isSpeaking = false;
-            avatar.classList.remove('speaking');
-            
-            // Resume Loop
-            if (shouldRestart) {
-                setTimeout(startRecognition, 800); // Small breath before listening
-            }
+        // Event: Start Speaking
+        window.currentUtterance.onstart = () => {
+            avatar.classList.add('speaking');
         };
         
-        window.speechSynthesis.speak(utterance);
+        // Event: Finished Speaking -> Resume Listening
+        window.currentUtterance.onend = () => {
+             isSpeaking = false;
+             avatar.classList.remove('speaking');
+             statusText.textContent = "Finished speaking...";
+             
+             // Important: Resume Loop
+             if (shouldRestart) {
+                 statusText.textContent = "Listening again...";
+                 setTimeout(startRecognition, 500); // Short pause before mic opens
+             }
+        };
+        
+        // Handle Error (e.g. if speech canceled)
+        window.currentUtterance.onerror = () => {
+            isSpeaking = false;
+            avatar.classList.remove('speaking');
+            if(shouldRestart) startRecognition();
+        };
+        
+        window.speechSynthesis.speak(window.currentUtterance);
     }
     
     window.speechSynthesis.getVoices();

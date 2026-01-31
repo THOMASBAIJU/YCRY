@@ -27,7 +27,7 @@
                     Physical Growth
                 </h2>
 
-                <form action="/growth" method="POST" class="space-y-4 mb-8">
+                <form id="growthForm" action="/growth" method="POST" class="space-y-4 mb-8">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="label-premium">Weight (kg)</label>
@@ -39,6 +39,7 @@
                         </div>
                     </div>
                     <button type="submit" class="btn-secondary w-full justify-center">Record New Entry</button>
+                    <p id="formStatus" class="text-center text-xs font-bold mt-2 hidden"></p>
                 </form>
 
                 <div class="glass-premium p-6 rounded-2xl bg-warm-cream border-warm-cream shadow-inner text-center">
@@ -71,6 +72,10 @@
                      
                      <!-- Toggles -->
                      <div class="flex bg-warm-cream rounded-xl p-1 gap-1">
+                        <button onclick="analyzeGrowth()" id="btn-analyze" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-purple-100 text-purple-700 hover:bg-purple-200 shadow-sm flex items-center gap-1">
+                            ✨ Analyze
+                        </button>
+                        <div class="w-px bg-warm-gray/20 mx-1"></div>
                         <button onclick="toggleChart('weight')" id="btn-weight" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-white shadow-sm text-warm-teal">
                             Weight
                         </button>
@@ -78,6 +83,14 @@
                             Height
                         </button>
                      </div>
+                </div>
+                
+                <!-- Analysis Result -->
+                <div id="analysisResult" class="hidden mb-4 p-4 rounded-xl bg-purple-50 border border-purple-100 text-sm text-purple-900 shadow-inner">
+                    <p class="font-bold flex items-center gap-2 mb-1">
+                        <span>👩‍⚕️</span> Dr. Ycry's Insights:
+                    </p>
+                    <p id="analysisText" class="leading-relaxed opacity-90">Loading...</p>
                 </div>
                 
                 <div class="relative h-64 w-full">
@@ -246,6 +259,120 @@
 
         // Initialize with weight
         renderChart('weight');
+
+        // AJAX Form Submission
+        document.getElementById('growthForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const statusFn = document.getElementById('formStatus');
+            
+            // Show loading state
+            statusFn.textContent = "Saving...";
+            statusFn.className = "text-center text-xs font-bold mt-2 text-blue-500 block";
+            
+            fetch('/growth', {
+                method: 'POST',
+                body: JSON.stringify(Object.fromEntries(formData)),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update Status
+                    statusFn.textContent = data.message;
+                    statusFn.className = "text-center text-xs font-bold mt-2 text-green-500 block";
+                    
+                    // Update Latest Stats UI
+                    if(data.latest) {
+                        const statsContainer = document.querySelector('.glass-premium.text-center');
+                        statsContainer.innerHTML = `
+                            <p class="text-xs font-bold text-warm-gray uppercase tracking-widest mb-2">Latest Measurements</p>
+                            <div class="flex justify-center items-center gap-8">
+                                <div>
+                                    <span class="text-3xl font-display font-bold text-warm-dark">${data.latest[0]}</span>
+                                    <span class="text-sm text-warm-gray">kg</span>
+                                </div>
+                                <div class="h-8 w-px bg-warm-gray/20"></div>
+                                 <div>
+                                    <span class="text-3xl font-display font-bold text-warm-dark">${data.latest[1]}</span>
+                                    <span class="text-sm text-warm-gray">cm</span>
+                                </div>
+                            </div>
+                             <p class="text-[10px] text-warm-gray mt-2">Recorded on ${data.latest[2]}</p>
+                        `;
+                    }
+                    
+                    // Update Chart Data Global Variables
+                    chartData.dates = data.dates;
+                    chartData.weights = data.weights;
+                    chartData.heights = data.heights;
+                    
+                    // Re-render current chart
+                    // Check which button is active to know which chart to render
+                    if (document.getElementById('btn-weight').classList.contains('text-warm-teal')) {
+                         renderChart('weight');
+                    } else {
+                         renderChart('height');
+                    }
+                    
+                    // Clear inputs
+                    document.querySelector('input[name="weight"]').value = '';
+                    document.querySelector('input[name="height"]').value = '';
+                    
+                    // Hide status after 3s
+                    setTimeout(() => { statusFn.classList.add('hidden'); }, 3000);
+                    
+                } else {
+                    statusFn.textContent = data.message;
+                    statusFn.className = "text-center text-xs font-bold mt-2 text-red-500 block";
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statusFn.textContent = "Error saving data.";
+                statusFn.className = "text-center text-xs font-bold mt-2 text-red-500 block";
+            });
+        });
+
+        // Global function for analysis
+        window.analyzeGrowth = function() {
+            const resultBox = document.getElementById('analysisResult');
+            const resultText = document.getElementById('analysisText');
+            const btn = document.getElementById('btn-analyze');
+            
+            // UI Loading State
+            resultBox.classList.remove('hidden');
+            resultText.innerHTML = '<span class="animate-pulse">Thinking... 🧠</span>';
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            
+            fetch('/api/analyze_growth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+                
+                if (data.analysis) {
+                    // Typewriter effect or just text
+                    resultText.innerHTML = data.analysis.replace(/\n/g, '<br>');
+                } else {
+                    resultText.textContent = data.error || "Analysis failed.";
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+                resultText.textContent = "Error connecting to AI Brain.";
+            });
+        };
+
     })();
 </script>
 {% endblock %}
