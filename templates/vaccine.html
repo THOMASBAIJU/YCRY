@@ -16,7 +16,7 @@
 
     <!-- Alert for Overdue -->
     {% if warning %}
-        <div class="glass-premium border-l-4 border-red-400 p-6 mb-8 flex items-start gap-4 animate-float" data-aos="fade-up">
+        <div id="overdue-alert" class="glass-premium border-l-4 border-red-400 p-6 mb-8 flex items-start gap-4 animate-float" data-aos="fade-up">
             <span class="text-3xl">⚠️</span>
             <div>
                 <h3 class="font-bold text-red-600 text-lg">Action Required</h3>
@@ -79,7 +79,7 @@
                                     All Good
                                 </span>
                             {% elif item.status == 'Overdue' %}
-                                <span class="bg-red-100 text-red-600 py-1 px-4 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm animate-pulse">
+                                <span class="badge-overdue bg-red-100 text-red-600 py-1 px-4 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm animate-pulse">
                                     Overdue
                                 </span>
                             {% else %}
@@ -128,14 +128,66 @@ function markVaccine(btn, name) {
     .then(r => r.json())
     .then(data => {
         if(data.success) {
-            // Transform button into "Done" badge
+            // 1. Transform button into "Done" badge
             btn.className = "inline-block mr-2 mb-1 px-2 py-0.5 rounded border bg-green-100 border-green-200 text-green-700 text-xs font-bold";
             btn.innerHTML = `${name} ✓`;
             btn.onclick = null; // Remove handler
             
-            // Optional: Check if we should update the left column badge too? 
-            // For now, simple visual feedback is enough.
-            showToast(`${name} marked as done!`, 'success');
+            // 2. Check if Row is Complete
+            // Find the parent row (tr)
+            const row = btn.closest('tr');
+            if (row) {
+                // Check if any other ENABLED buttons exist in this row
+                const pendingButtons = row.querySelectorAll('button:not([disabled])');
+                
+                if (pendingButtons.length === 0) {
+                    // All buttons in this row are now disabled/done
+                    
+                    // A. Update Status Badge (3rd column)
+                    const statusCell = row.cells[2];
+                    if (statusCell) {
+                        statusCell.innerHTML = `
+                            <span class="bg-green-100 text-green-700 py-1 px-4 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm animate-pulse">
+                                All Good
+                            </span>
+                        `;
+                    }
+                    
+                    // B. Update Action Cell (hide buttons container if empty or show success icon)
+                    const actionCell = row.cells[3];
+                    if (actionCell) {
+                         // We can remove the button container or replace it
+                         actionCell.innerHTML = '<span class="text-green-500 text-2xl">🎉</span>';
+                    }
+                    
+                    // C. Update Row Styling
+                    // Remove red background if it was overdue
+                    row.classList.remove('bg-red-50');
+                    row.classList.add('bg-green-50');
+                    
+                    showToast(`Milestone Completed! 🎉`, 'success');
+
+                    // 3. CHECK FOR GLOBAL ALERTS
+                    // If no more "Overdue" badges exist in the entire table, hide the main alert.
+                    setTimeout(() => {
+                        // We search for the specific class we added or text content
+                        const remainingOverdue = Array.from(document.querySelectorAll('span')).some(span => span.textContent.trim().toUpperCase() === 'OVERDUE');
+                        
+                        if (!remainingOverdue) {
+                            const mainAlert = document.getElementById('overdue-alert');
+                            if (mainAlert) {
+                                mainAlert.style.transition = 'all 0.5s ease-out';
+                                mainAlert.style.opacity = '0';
+                                mainAlert.style.transform = 'translateY(-20px)';
+                                setTimeout(() => mainAlert.remove(), 500);
+                            }
+                        }
+                    }, 100);
+
+                } else {
+                    showToast(`${name} marked as done!`, 'success');
+                }
+            }
         } else {
             showToast("Error: " + data.error, 'error');
             btn.disabled = false;

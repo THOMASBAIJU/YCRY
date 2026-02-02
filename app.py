@@ -309,16 +309,49 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        name = db.login_user(username, password)
+        
+        name, is_admin = db.login_user(username, password)
+        
         if name == "DB_ERROR":
             flash("⚠️ Database connection failed. Please check your internet or whitelist your IP.")
         elif name:
             session['user'] = username
             session['real_name'] = name
+            session['is_admin'] = is_admin
+            
+            if is_admin:
+                return redirect(url_for('admin_dashboard'))
             return redirect(url_for('home'))
         else:
             flash("Invalid Username or Password")
     return render_template('login.html')
+
+@app.route('/admin')
+def admin_dashboard():
+    if 'user' not in session: return redirect(url_for('login'))
+    if not session.get('is_admin'):
+        flash("⛔ Access Denied: Admin privileges required.")
+        return redirect(url_for('home'))
+        
+    users = db.get_all_users()
+    return render_template('admin.html', users=users)
+
+@app.route('/admin/delete/<username>', methods=['POST'])
+def admin_delete_user(username):
+    if 'user' not in session or not session.get('is_admin'):
+         return jsonify({"success": False, "message": "Unauthorized"}), 401 # Changed from 403 to avoid redirect loop issues in some clients, but 403 is correct. 401 is easier to handle.
+         
+    if username == session['user']:
+        return jsonify({"success": False, "message": "You cannot delete yourself!"}), 400
+        
+    success, pic = db.delete_user(username)
+    if success:
+        if pic:
+            try:
+                os.remove(os.path.join(app.config['PROFILE_FOLDER'], pic))
+            except: pass
+        return jsonify({"success": True})
+    return jsonify({"success": False, "message": "Delete failed"}), 500
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -367,7 +400,12 @@ def register():
             status, report = analyze_birth_health(weight, apgar, head, chest)
             
             if db.create_user(user, pw, caregiver_name):
+                # 1. Save Profile
                 db.save_full_profile(user, (b_name, dob, gender, blood, weight, height, head, chest, apgar, report, pic_filename))
+                
+                # 2. Save Initial Growth Record (Backdated to DOB)
+                db.add_growth_record(user, weight, height, date_str=dob)
+
                 session['user'] = user
                 session['real_name'] = caregiver_name
                 flash(f"Welcome! Health Status: {status}")
@@ -1048,13 +1086,13 @@ def get_exercises(age):
         return exercises
     elif age < 6:
         return [
-            {"name": "Supported Sit", "desc": "Prop baby up with pillows or between your legs.", "benefit": "Core strength", "video_id": "YxL7J7f3oVs"},
-            {"name": "Reach & Grab", "desc": "Hold toy just out of reach to encourage extension.", "benefit": "Hand-eye coordination", "video_id": "qT4V1G1lC-M"}
+            {"name": "Supported Sit", "desc": "Prop baby up with pillows or between your legs.", "benefit": "Core strength", "video_id": "wX1D_Vv69-A"},
+            {"name": "Reach & Grab", "desc": "Hold toy just out of reach to encourage extension.", "benefit": "Hand-eye coordination", "video_id": "W3t7c7s54bA"}
         ]
     elif age < 9:
         return [
             {"name": "Peek-a-Boo", "desc": "Hide face behind hands or cloth to teach object permanence.", "benefit": "Cognitive development", "video_id": "lVFj91Z1AfM"}, 
-            {"name": "Obstacle Course", "desc": "Use pillows on floor for baby to crawl over.", "benefit": "Motor skills", "video_id": "Fj-0l37d8qg"}
+            {"name": "Obstacle Course", "desc": "Use pillows on floor for baby to crawl over.", "benefit": "Motor skills", "video_id": "9T52OgZ6Rxg"}
         ]
     else: # 9-12+
         return [

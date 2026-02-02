@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+    
+    <!-- Header -->
+    <div class="text-center mb-12" data-aos="fade-down">
+        <h1 class="text-4xl md:text-5xl font-display font-extrabold text-warm-dark mb-4">
+            Admin <span class="text-warm-coral">Dashboard</span>
+        </h1>
+        <p class="text-xl text-warm-gray max-w-2xl mx-auto">
+            Manage your users and application data.
+        </p>
+    </div>
+
+    <!-- Users Table -->
+    <div class="glass-premium rounded-3xl p-8 shadow-2xl border border-white/50 relative overflow-hidden" data-aos="fade-up">
+        <div class="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+            <span class="text-9xl">🛡️</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-warm-gray text-sm uppercase tracking-wider border-b-2 border-warm-cream">
+                        <th class="py-4 px-4">User</th>
+                        <th class="py-4 px-4">Role</th>
+                        <th class="py-4 px-4 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-warm-dark">
+                    {% for u in users %}
+                    <tr id="user-row-{{ u._id }}" class="border-b border-warm-cream hover:bg-white/40 transition duration-200">
+                        <td class="py-4 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-warm-teal/20 flex items-center justify-center text-warm-teal font-bold border-2 border-white shadow-sm">
+                                    {{ u.caregiver_name[0] | upper }}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-lg">{{ u.caregiver_name }}</p>
+                                    <p class="text-xs text-warm-gray">{{ u._id }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4">
+                            {% if u.is_admin %}
+                                <span class="px-3 py-1 rounded-full text-xs font-bold bg-warm-coral text-white shadow-sm">
+                                    Admin
+                                </span>
+                            {% else %}
+                                <span class="px-3 py-1 rounded-full text-xs font-bold bg-warm-cream text-warm-gray border border-warm-gray/10">
+                                    User
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-4 text-center">
+                            {% if u._id != session['user'] %}
+                            <button onclick="deleteUser('{{ u._id }}')" 
+                                    class="text-warm-gray hover:text-red-600 transition p-2 rounded-full hover:bg-red-50"
+                                    title="Delete User">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                            {% else %}
+                            <span class="text-xs text-warm-gray italic">You</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="py-8 text-center text-warm-gray">No users found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+async function deleteUser(username) {
+    if (!confirm(`Are you sure you want to PERMANENTLY delete user "${username}"? This action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/admin/delete/${username}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`User "${username}" deleted successfully.`, 'success');
+            
+            // Remove row from DOM
+            const row = document.getElementById(`user-row-${username}`);
+            if (row) {
+                row.style.transition = 'all 0.5s ease';
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(20px)';
+                setTimeout(() => row.remove(), 500);
+            }
+        } else {
+            showToast(data.message || 'Error deleting user.', 'error');
+        }
+    } catch (error) {
+        showToast('Network error or server failed.', 'error');
+        console.error(error);
+    }
+}
+</script>
+{% endblock %}

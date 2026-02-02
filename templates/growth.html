@@ -186,14 +186,15 @@
 
             const isWeight = type === 'weight';
             const label = isWeight ? 'Weight (kg)' : 'Height (cm)';
-            const data = isWeight ? chartWeights : chartHeights;
+            // Use chartData properties directly to get updated values
+            const data = isWeight ? chartData.weights : chartData.heights;
             const color = isWeight ? '#38B2AC' : '#ED8936';
             const bgColor = isWeight ? 'rgba(56, 178, 172, 0.1)' : 'rgba(237, 137, 54, 0.1)';
 
             currentChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: dates,
+                    labels: chartData.dates, // Use updated dates
                     datasets: [{
                         label: label,
                         data: data,
