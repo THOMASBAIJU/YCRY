@@ -58,19 +58,59 @@ def create_user(username, password, name):
         print(f"Create User Error: {e}")
         return False
 
+def delete_user(username):
+    if db is None: init_db()
+    try:
+        # Find user to get profile pic
+        user = db.users.find_one({"_id": username})
+        if not user:
+            return False, None
+            
+        # Delete user
+        db.users.delete_one({"_id": username})
+        
+        # Get profile pic if exists
+        pic = None
+        if user.get('profile') and user['profile'].get('profile_pic'):
+            pic = user['profile']['profile_pic']
+            
+        return True, pic
+    except Exception as e:
+        print(f"Delete User Error: {e}")
+        return False, None
+
 def login_user(username, password):
     if db is None: init_db()
     try:
         user = db.users.find_one({"_id": username})
         
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password']):
-            return user['caregiver_name']
+            # Return tuple: (Name, is_admin)
+            return user['caregiver_name'], user.get('is_admin', False)
     except ServerSelectionTimeoutError:
         print("❌ DB Timeout during login")
-        return "DB_ERROR"
+        return "DB_ERROR", False
     except Exception as e:
         print(f"Login Error: {e}")
-    return None
+    return None, False
+
+def get_all_users():
+    if db is None: init_db()
+    try:
+        # Return list of user documents with just relevant fields
+        return list(db.users.find({}, {"_id": 1, "caregiver_name": 1, "is_admin": 1}))
+    except Exception as e:
+        print(f"Get All Users Error: {e}")
+        return []
+
+def make_admin(username):
+    if db is None: init_db()
+    try:
+        db.users.update_one({"_id": username}, {"$set": {"is_admin": True}})
+        return True
+    except Exception as e:
+        print(f"Make Admin Error: {e}")
+        return False
 
 # --- PROFILE FUNCTIONS ---
 def save_full_profile(username, data):
@@ -108,9 +148,9 @@ def get_profile(username):
     return None
 
 # --- GROWTH & VACCINE FUNCTIONS ---
-def add_growth_record(username, weight, height):
+def add_growth_record(username, weight, height, date_str=None):
     if db is None: init_db()
-    today = str(datetime.date.today())
+    today = date_str if date_str else str(datetime.date.today())
     
     # Check if a record for today already exists
     query = {"_id": username, "growth.date": today}
