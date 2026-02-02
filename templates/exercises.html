@@ -28,10 +28,16 @@
             
             <p class="text-warm-gray text-lg leading-relaxed">{{ ex.desc }}</p>
             
-            <div class="mt-6 flex justify-end">
-                <button onclick="openVideo('{{ ex.video_id }}')" class="w-12 h-12 rounded-full bg-warm-teal text-white flex items-center justify-center shadow-lg group-hover:rotate-90 transition-transform hover:bg-teal-600">
+            <div class="mt-6 flex justify-between items-center">
+                <p class="text-xs font-bold text-warm-gray uppercase tracking-widest">Watch Tutorial</p>
+                <button id="btn-{{ loop.index }}" onclick="toggleVideo('{{ loop.index }}', '{{ ex.video_id }}')" class="w-12 h-12 rounded-full bg-warm-teal text-white flex items-center justify-center shadow-lg transition-all hover:scale-110 hover:bg-teal-600">
                     ▶
                 </button>
+            </div>
+
+            <!-- Inline Video Container -->
+            <div id="video-container-{{ loop.index }}" class="hidden mt-6 rounded-2xl overflow-hidden shadow-inner bg-black/5 transaction-all duration-500">
+                <!-- Iframe injected here -->
             </div>
         </div>
         {% endfor %}
@@ -43,63 +49,61 @@
         <p class="text-2xl font-display text-warm-dark">Try to do <span class="text-warm-coral">2 activities</span> per day for 5-10 minutes!</p>
     </div>
 
-    <!-- Video Modal -->
-    <div id="videoModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 transition-opacity duration-300">
-        <div class="relative bg-white rounded-2xl overflow-hidden shadow-2xl w-full max-w-3xl mx-4 transform scale-95 transition-transform duration-300" id="modalContent">
-            <!-- Close Button -->
-            <button onclick="closeVideo()" class="absolute top-4 right-4 z-10 bg-white/20 hover:bg-white/40 text-white rounded-full p-2 backdrop-blur-md transition">
-                ✕
-            </button>
-            
-            <div class="aspect-video w-full">
-                <iframe id="youtubeFrame" class="w-full h-full" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <script>
-    function openVideo(videoId) {
+    let activeVideoIndex = null;
+
+    function toggleVideo(index, videoId) {
         if (!videoId) {
-            alert("Video coming soon!");
+            showToast("Video coming soon!", "info");
             return;
         }
-        const modal = document.getElementById('videoModal');
-        const modalContent = document.getElementById('modalContent');
-        const frame = document.getElementById('youtubeFrame');
-        
-        frame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-        
-        modal.classList.remove('hidden');
-        // Small timeout to allow display:block to apply before opacity transition
-        setTimeout(() => {
-            modal.classList.remove('opacity-0');
-            modalContent.classList.remove('scale-95');
-            modalContent.classList.add('scale-100');
-        }, 10);
-    }
 
-    function closeVideo() {
-        const modal = document.getElementById('videoModal');
-        const modalContent = document.getElementById('modalContent');
-        const frame = document.getElementById('youtubeFrame');
-        
-        modal.classList.add('opacity-0');
-        modalContent.classList.remove('scale-100');
-        modalContent.classList.add('scale-95');
-        
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            frame.src = ""; // Stop audio
-        }, 300);
-    }
+        const container = document.getElementById(`video-container-${index}`);
+        const btn = document.getElementById(`btn-${index}`);
+        const isHidden = container.classList.contains('hidden');
 
-    // Close on click outside
-    document.getElementById('videoModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeVideo();
+        // 1. Close any currently active video (Accordion behavior)
+        if (activeVideoIndex !== null && activeVideoIndex !== index) {
+            const oldContainer = document.getElementById(`video-container-${activeVideoIndex}`);
+            const oldBtn = document.getElementById(`btn-${activeVideoIndex}`);
+            if(oldContainer) {
+                oldContainer.innerHTML = '';
+                oldContainer.classList.add('hidden');
+                oldBtn.innerHTML = '▶';
+                oldBtn.classList.remove('bg-warm-coral', 'rotate-90');
+                oldBtn.classList.add('bg-warm-teal');
+            }
         }
-    });
+
+        // 2. Toggle current
+        if (isHidden) {
+            // Open
+            container.classList.remove('hidden');
+            container.innerHTML = `
+                <div class="aspect-video w-full animate-fade-in">
+                    <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1" 
+                            title="Exercise Video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen>
+                    </iframe>
+                </div>`;
+            
+            btn.innerHTML = '✕';
+            btn.classList.remove('bg-warm-teal');
+            btn.classList.add('bg-warm-coral', 'rotate-90');
+            
+            activeVideoIndex = index;
+        } else {
+            // Close
+            container.classList.add('hidden');
+            container.innerHTML = ''; // Stop video
+            
+            btn.innerHTML = '▶';
+            btn.classList.remove('bg-warm-coral', 'rotate-90');
+            btn.classList.add('bg-warm-teal');
+            
+            activeVideoIndex = null;
+        }
+    }
 </script>
 {% endblock %}

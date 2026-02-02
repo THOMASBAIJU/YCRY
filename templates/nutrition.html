@@ -14,44 +14,7 @@
          </div>
     </div>
 
-    <!-- AI Tools Grid -->
-    <div class="grid md:grid-cols-2 gap-6 mb-12">
-        
-        <!-- 1. Food Safety Checker -->
-        <div class="glass-premium p-6 relative overflow-hidden group hover:scale-[1.02] transition-transform">
-            <div class="absolute top-0 right-0 p-4 opacity-10 text-6xl">🍎</div>
-            <h3 class="text-xl font-bold text-warm-dark mb-4">Can I Eat This?</h3>
-            <div class="flex gap-2 mb-4">
-                <input type="text" id="foodInput" placeholder="e.g. Honey, Strawberry..." class="input-premium flex-1">
-                <button onclick="checkFood()" id="btnCheck" class="btn-primary px-4">Check</button>
-            </div>
-            <!-- Result Box -->
-            <div id="checkResult" class="hidden p-4 rounded-xl bg-gray-50 text-sm border border-gray-100">
-                <p class="font-bold mb-1" id="checkStatus">Loading...</p>
-                <p id="checkDesc" class="text-gray-600 text-xs">...</p>
-            </div>
-        </div>
 
-        <!-- 2. Meal Planner -->
-        <div class="glass-premium p-6 relative overflow-hidden group hover:scale-[1.02] transition-transform">
-            <div class="absolute top-0 right-0 p-4 opacity-10 text-6xl">🥗</div>
-            <h3 class="text-xl font-bold text-warm-dark mb-4">Smart Meal Planner</h3>
-            <p class="text-sm text-warm-gray mb-4">Get a varied, age-appropriate 1-day menu for {{ baby_name }}.</p>
-            <button onclick="generateMealPlan()" id="btnPlan" class="btn-secondary w-full justify-center">
-                ✨ Generate Daily Plan
-            </button>
-        </div>
-    </div>
-
-    <!-- Meal Plan Result (Full Width) -->
-    <div id="planResult" class="hidden glass-premium p-8 mb-12 border-orange-200 bg-orange-50/30">
-        <h3 class="text-xl font-bold text-orange-800 mb-6 flex items-center gap-2">
-            <span>🍽️</span> Today's Menu
-        </h3>
-        <div id="planContent" class="grid md:grid-cols-3 gap-6">
-            <!-- Filled by JS -->
-        </div>
-    </div>
 
     <!-- Main Guide Card -->
     <div class="glass-premium p-8 md:p-12 relative overflow-hidden mb-12">
@@ -78,9 +41,11 @@
                             <span class="w-2 h-2 rounded-full bg-green-400"></span>
                             <span class="text-gray-700 font-medium">{{ item }}</span>
                         </div>
-                        <button onclick="getRecipe('{{ item }}')" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] bg-white border border-green-200 text-green-600 px-2 py-1 rounded shadow-sm hover:bg-green-50">
+                        {% if item in recipes %}
+                        <button onclick="showRecipe('{{ item }}')" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] bg-white border border-green-200 text-green-600 px-2 py-1 rounded shadow-sm hover:bg-green-50">
                             Recipe 👨‍🍳
                         </button>
+                        {% endif %}
                     </li>
                     {% endfor %}
                 </ul>
@@ -113,139 +78,114 @@
         </div>
     </div>
 
+
+    <!-- First Tastes Food Log -->
+    <div class="glass-premium p-8 mb-12 relative overflow-hidden">
+        <div class="absolute top-0 right-0 bg-blue-100 text-blue-800 font-bold py-2 px-6 rounded-bl-2xl shadow-md">
+            First Tastes Log 🥄
+        </div>
+        
+        <h2 class="text-2xl font-bold text-warm-dark mb-6">Track New Foods</h2>
+        
+        <!-- Add Form -->
+        <form id="foodLogForm" class="flex flex-col md:flex-row gap-4 mb-8">
+            <input type="text" name="food" placeholder="Food Name (e.g. Avocado)" required
+                   class="input-premium flex-1">
+            
+            <select name="reaction" class="input-premium w-full md:w-48" required>
+                <option value="" disabled selected>Reaction?</option>
+                <option value="😍 Loved it">😍 Loved it</option>
+                <option value="😐 Okay">😐 Okay</option>
+                <option value="👎 Disliked">👎 Disliked</option>
+                <option value="⚠️ Allergy">⚠️ Allergy</option>
+            </select>
+            
+            <button type="submit" class="btn-primary whitespace-nowrap">
+                + Add Log
+            </button>
+        </form>
+        
+        <!-- Log History -->
+        <div id="foodLogList" class="space-y-3">
+            {% if food_log %}
+                {% for log in food_log %}
+                <div class="flex items-center justify-between bg-white/60 p-4 rounded-xl border border-white shadow-sm transition-all duration-300 group" data-food="{{ log.food }}">
+                    <div>
+                        <p class="font-bold text-gray-800">{{ log.food }}</p>
+                        <p class="text-xs text-gray-500">{{ log.date }}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="px-3 py-1 rounded-full text-sm font-bold 
+                            {% if 'Love' in log.reaction %}bg-green-100 text-green-700
+                            {% elif 'Okay' in log.reaction %}bg-yellow-100 text-yellow-700
+                            {% elif 'Dislike' in log.reaction %}bg-orange-100 text-orange-700
+                            {% else %}bg-red-100 text-red-700{% endif %}">
+                            {{ log.reaction }}
+                        </span>
+                        <button onclick="removeFood('{{ log.food }}')" class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100" title="Remove">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-center text-gray-500 italic">No foods recorded yet. Try tracking one!</p>
+            {% endif %}
+        </div>
+    </div>
+
 </div>
 
+</div>
+
+
+    <!-- Recipes Data -->
+    <script id="recipes-data" type="application/json">
+        {{ recipes|tojson }}
+    </script>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform scale-95 transition-all">
+            <h3 class="font-bold text-xl text-warm-dark mb-2">Remove Item?</h3>
+            <p class="text-gray-600 mb-6" id="deleteModalText">Are you sure you want to remove this food?</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 rounded-lg font-bold text-gray-500 hover:bg-gray-100 transition">Cancel</button>
+                <button id="confirmDeleteBtn" class="px-4 py-2 rounded-lg font-bold bg-red-100 text-red-600 hover:bg-red-200 transition">Yes, Remove</button>
+            </div>
+        </div>
+    </div>
+
 <script>
-    // 1. Check Food Safety
-    function checkFood() {
-        const query = document.getElementById('foodInput').value;
-        if(!query) return;
-        
-        const btn = document.getElementById('btnCheck');
-        const resBox = document.getElementById('checkResult');
-        const status = document.getElementById('checkStatus');
-        const desc = document.getElementById('checkDesc');
-        
-        btn.disabled = true;
-        btn.innerHTML = '...';
-        resBox.classList.remove('hidden');
-        status.innerHTML = 'Analyzing...';
-        resBox.className = 'p-4 rounded-xl bg-gray-50 text-sm border border-gray-100 mt-2';
-        
-        fetch('/api/nutrition_ai', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'check_safety', query: query})
-        })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = 'Check';
-            
-            if(data.error) {
-                status.innerText = "Error";
-                desc.innerText = data.error;
-                return;
-            }
-            
-            // Color Logic
-            let colorClass = 'bg-gray-50 border-gray-200';
-            let icon = '❓';
-            if(data.status.includes('SAFE')) { colorClass = 'bg-green-50 border-green-200 text-green-900'; icon = '✅'; }
-            if(data.status.includes('CAUTION')) { colorClass = 'bg-yellow-50 border-yellow-200 text-yellow-900'; icon = '⚠️'; }
-            if(data.status.includes('UNSAFE') || data.status.includes('AVOID')) { colorClass = 'bg-red-50 border-red-200 text-red-900'; icon = '🚫'; }
-            
-            resBox.className = `p-4 rounded-xl text-sm border mt-2 ${colorClass}`;
-            status.innerHTML = `${icon} ${data.status}`;
-            desc.innerHTML = `<strong>Prep:</strong> ${data.prep}<br><strong>Benefit:</strong> ${data.benefit}`;
-        });
-    }
+    // Pass recipes from Flask to JS safely
+    const RECIPES = JSON.parse(document.getElementById('recipes-data').textContent);
 
-    // 2. Generate Meal Plan
-    function generateMealPlan() {
-        const btn = document.getElementById('btnPlan');
-        const resBox = document.getElementById('planResult');
-        const content = document.getElementById('planContent');
-        
-        btn.disabled = true;
-        btn.innerHTML = 'Cooking... 🍳';
-        resBox.classList.remove('hidden');
-        content.innerHTML = '<p class="col-span-3 text-center text-gray-500 py-8">Chef AI is designing the menu...</p>';
-        
-        fetch('/api/nutrition_ai', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'meal_plan'})
-        })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = '✨ Reroll Menu';
-            content.innerHTML = '';
-            
-            if(data.error) {
-                content.innerHTML = `<p class="col-span-3 text-center text-red-500">${data.error}</p>`;
-                return;
-            }
-            
-            data.forEach(m => {
-                const card = document.createElement('div');
-                card.className = "bg-white p-5 rounded-xl shadow-sm border border-orange-100";
-                card.innerHTML = `
-                    <h4 class="font-bold text-orange-600 text-xs uppercase tracking-wider mb-2">${m.meal}</h4>
-                    <p class="font-bold text-gray-800 text-lg mb-1">${m.food}</p>
-                    <p class="text-sm text-gray-500">${m.desc}</p>
-                `;
-                content.appendChild(card);
-            });
-        });
-    }
-
-    // 3. Get Recipe
-    function getRecipe(foodName) {
+    function showRecipe(foodName) {
         const modal = document.getElementById('recipeModal');
         const content = document.getElementById('recipeModalContent');
         const body = document.getElementById('recipeBody');
         
+        const data = RECIPES[foodName];
+        if(!data) return;
+
         modal.classList.remove('hidden');
-        // Animate in
         setTimeout(() => {
             content.classList.remove('scale-95', 'opacity-0');
             content.classList.add('scale-100', 'opacity-100');
         }, 10);
         
-        body.innerHTML = `
-            <div class="text-center py-12">
-                <p class="text-4xl mb-4">👨‍🍳</p>
-                <p class="text-gray-500">Finding the perfect recipe for ${foodName}...</p>
-            </div>
-        `;
+        const stepsHtml = data.steps.map(s => `<li class="mb-2 text-gray-600">${s}</li>`).join('');
+        const ingHtml = data.ingredients.map(i => `<span class="bg-orange-50 text-orange-700 px-3 py-1 rounded-full text-xs font-bold border border-orange-100">${i}</span>`).join('');
         
-        fetch('/api/nutrition_ai', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'recipe', query: foodName})
-        })
-        .then(r => r.json())
-        .then(data => {
-            if(data.error) {
-                body.innerHTML = `<p class="text-center text-red-500">${data.error}</p>`;
-                return;
-            }
+        body.innerHTML = `
+            <h3 class="text-2xl font-display font-bold text-gray-800 mb-2">${data.title}</h3>
+            <div class="flex flex-wrap gap-2 mb-6">${ingHtml}</div>
             
-            const stepsHtml = data.steps.map(s => `<li class="mb-2 text-gray-600">${s}</li>`).join('');
-            const ingHtml = data.ingredients.map(i => `<span class="bg-orange-50 text-orange-700 px-3 py-1 rounded-full text-xs font-bold border border-orange-100">${i}</span>`).join('');
-            
-            body.innerHTML = `
-                <h3 class="text-2xl font-display font-bold text-gray-800 mb-2">${data.title}</h3>
-                <div class="flex flex-wrap gap-2 mb-6">${ingHtml}</div>
-                
-                <h4 class="font-bold text-gray-700 mb-3 border-b border-gray-100 pb-2">Instructions</h4>
-                <ol class="list-decimal pl-5 space-y-2 marker:text-orange-500 marker:font-bold">
-                    ${stepsHtml}
-                </ol>
-            `;
-        });
+            <h4 class="font-bold text-gray-700 mb-3 border-b border-gray-100 pb-2">Instructions</h4>
+            <ol class="list-decimal pl-5 space-y-2 marker:text-orange-500 marker:font-bold">
+                ${stepsHtml}
+            </ol>
+        `;
     }
     
     function closeRecipe() {
@@ -258,6 +198,118 @@
         setTimeout(() => {
             modal.classList.add('hidden');
         }, 200);
+    }
+
+    // --- AJAX FOOD LOG ---
+    document.getElementById('foodLogForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        fetch('/add_food_log', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success) {
+                const list = document.getElementById('foodLogList');
+                // Remove empty message if exists
+                const emptyMsg = list.querySelector('.italic');
+                if(emptyMsg) emptyMsg.remove();
+                
+                // Determine color
+                let colorClass = 'bg-red-100 text-red-700';
+                if(data.reaction.includes('Love')) colorClass = 'bg-green-100 text-green-700';
+                else if(data.reaction.includes('Okay')) colorClass = 'bg-yellow-100 text-yellow-700';
+                else if(data.reaction.includes('Dislike')) colorClass = 'bg-orange-100 text-orange-700';
+                
+                // Overwrite Logic: Remove existing if present
+                const existing = list.querySelector(`div[data-food="${data.food}"]`);
+                if(existing) {
+                    existing.style.opacity = '0';
+                    setTimeout(() => existing.remove(), 200);
+                }
+                
+                const newItem = document.createElement('div');
+                newItem.className = "flex items-center justify-between bg-white/60 p-4 rounded-xl border border-white shadow-sm transition-all duration-500 transform translate-y-2 opacity-0 group";
+                newItem.setAttribute('data-food', data.food);
+                
+                newItem.innerHTML = `
+                    <div>
+                        <p class="font-bold text-gray-800">${data.food}</p>
+                        <p class="text-xs text-gray-500">${data.date}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="px-3 py-1 rounded-full text-sm font-bold ${colorClass}">
+                            ${data.reaction}
+                        </span>
+                        <button onclick="removeFood('${data.food}')" class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100" title="Remove">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+                
+                if (existing) {
+                    setTimeout(() => list.prepend(newItem), 200); // Wait for fade out
+                    setTimeout(() => newItem.classList.remove('opacity-0', 'translate-y-2'), 250);
+                } else {
+                    list.prepend(newItem);
+                    setTimeout(() => newItem.classList.remove('opacity-0', 'translate-y-2'), 10);
+                }
+                
+                this.reset();
+                showToast(`Added ${data.food}`, 'success');
+            } else {
+                showToast(data.error || "Error adding log", 'error');
+            }
+        });
+    });
+
+    let foodToDelete = null;
+
+    function removeFood(foodName) {
+        foodToDelete = foodName;
+        const modal = document.getElementById('deleteModal');
+        const text = document.getElementById('deleteModalText');
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        
+        text.textContent = `Remove '${foodName}' from your log?`;
+        modal.classList.remove('hidden');
+        
+        // Setup confirm click
+        confirmBtn.onclick = function() {
+            performDelete(foodToDelete);
+            closeDeleteModal();
+        };
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+        foodToDelete = null;
+    }
+
+    function performDelete(foodName) {
+        const formData = new FormData();
+        formData.append('food', foodName);
+        
+        fetch('/remove_food_log', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success) {
+                const item = document.querySelector(`div[data-food="${foodName}"]`);
+                if(item) {
+                    item.style.transform = 'translateX(20px)';
+                    item.style.opacity = '0';
+                    setTimeout(() => item.remove(), 300);
+                    showToast(`Removed ${foodName}`, 'success');
+                }
+            } else {
+                showToast("Could not remove item.", 'error');
+            }
+        });
     }
 </script>
 {% endblock %}

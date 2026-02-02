@@ -14,6 +14,65 @@
          </div>
     </div>
 
+    <!-- Digital Medical ID Card -->
+    <div class="glass-premium p-8 rounded-[2rem] shadow-xl border border-white/50 mb-10 relative overflow-hidden group transition-all duration-300 hover:shadow-2xl" id="medicalIDCard">
+        <!-- Shine Effect -->
+        <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/20 to-transparent rounded-full -mr-32 -mt-32 pointer-events-none"></div>
+        
+        <div class="flex justify-between items-start mb-6 relative z-10">
+            <div>
+                <h2 class="text-2xl font-display font-extrabold text-warm-dark flex items-center gap-2">
+                    Digital Medical ID 
+                    <span class="text-xs bg-warm-teal text-white px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">Secure</span>
+                </h2>
+                <p class="text-warm-gray text-sm">Emergency Information for <span class="font-bold text-warm-dark">{{ baby_name }}</span></p>
+            </div>
+            <button onclick="openMedicalModal()" class="w-10 h-10 rounded-full bg-white/50 text-warm-teal hover:bg-warm-teal hover:text-white flex items-center justify-center transition shadow-sm border border-white">
+                ✎
+            </button>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8 relative z-10">
+            <!-- Left Col -->
+            <div class="space-y-4">
+                <div class="flex items-center gap-4 bg-white/40 p-3 rounded-xl">
+                    <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xl font-bold">🩸</div>
+                    <div>
+                        <p class="text-xs text-warm-gray font-bold uppercase">Blood Type</p>
+                        <p class="font-bold text-warm-dark text-lg">{{ profile['blood_group'] }}</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4 bg-white/40 p-3 rounded-xl border-l-4 border-l-warm-coral">
+                    <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xl">🥜</div>
+                    <div>
+                        <p class="text-xs text-warm-gray font-bold uppercase">Allergies</p>
+                        <p class="font-bold text-warm-coral" id="display-allergies">{{ mid.get('allergies') or "None Known" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Col -->
+            <div class="space-y-4">
+                <div class="bg-white/40 p-4 rounded-xl">
+                    <p class="text-xs text-warm-gray font-bold uppercase mb-1">Pediatrician</p>
+                    <div class="flex justify-between items-center">
+                        <p class="font-bold text-warm-dark" id="display-doc">{{ mid.get('doctor_name') or "Not Listed" }}</p>
+                        <a href="tel:{{ mid.get('doctor_phone') }}" class="text-warm-teal font-bold text-sm bg-teal-50 px-2 py-1 rounded-lg hover:bg-warm-teal hover:text-white transition" id="display-doc-phone">
+                            📞 {{ mid.get('doctor_phone') or "Add" }}
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-white/40 p-4 rounded-xl">
+                    <p class="text-xs text-warm-gray font-bold uppercase mb-1">Insurance</p>
+                    <p class="font-bold text-warm-dark text-sm truncate" id="display-insurance">{{ mid.get('insurance_provider') or "Not Listed" }}</p>
+                    <p class="text-xs text-warm-gray font-mono mt-1" id="display-policy">Policy #: {{ mid.get('policy_number') or "---" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Emergency Banner -->
     <div class="bg-red-500 text-white p-6 rounded-2xl shadow-xl mb-10 flex items-center gap-6 animate-pulse">
         <div class="text-4xl">🚑</div>
@@ -24,26 +83,364 @@
     </div>
 
     <!-- Warning List -->
-    <div class="space-y-4">
-        {% for warn in warnings %}
-        <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-l-warm-coral hover:shadow-md transition-shadow">
-            <div class="flex items-start justify-between">
+    <!-- Digital Medical ID Card -->
+    <!-- (Existing code) -->
+
+    <!-- Dosage Calculator -->
+    <div class="glass-premium p-8 rounded-[2rem] shadow-xl border border-white/50 mb-10 relative overflow-hidden" id="dosageCalc">
+        <div class="absolute top-0 left-0 bg-purple-100 text-purple-800 font-bold py-2 px-6 rounded-br-2xl shadow-sm">
+            safety-first 🛡️
+        </div>
+        
+        <div class="text-center mb-6 mt-2">
+            <h2 class="text-2xl font-display font-bold text-warm-dark">Medicine Dosage Calculator 💊</h2>
+            <p class="text-warm-gray text-sm">Calculate safe doses based on weight.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8 items-center">
+            <!-- Inputs -->
+            <div class="space-y-4">
                 <div>
-                    <h3 class="font-bold text-lg text-warm-dark mb-1">{{ warn.symptom }}</h3>
-                    <p class="text-warm-gray my-2">{{ warn.desc }}</p>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Baby's Weight (kg)</label>
+                    <input type="number" id="calc-weight" value="{{ weight }}" step="0.1" class="w-full text-center text-2xl font-bold text-warm-dark rounded-xl border-gray-200 focus:border-purple-500 focus:ring focus:ring-purple-200 p-4" placeholder="0.0">
                 </div>
-                <span class="text-3xl">⚠️</span>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="setMedicine('paracetamol')" id="btn-para" class="p-3 rounded-xl border-2 border-purple-100 bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 transition ring-2 ring-purple-500">
+                        Paracetamol
+                        <span class="block text-[10px] font-normal opacity-70">Fever/Pain</span>
+                    </button>
+                    <button onclick="setMedicine('ibuprofen')" id="btn-ibu" class="p-3 rounded-xl border-2 border-gray-100 bg-gray-50 text-gray-500 font-bold hover:bg-gray-100 transition">
+                        Ibuprofen
+                        <span class="block text-[10px] font-normal opacity-70">Inflammation</span>
+                    </button>
+                </div>
             </div>
-            <div class="mt-4 pt-4 border-t border-gray-100">
-                <p class="text-sm font-bold text-red-500 uppercase tracking-widest text-xs mb-1">Recommended Action</p>
-                <p class="font-bold text-gray-800">{{ warn.action }}</p>
+
+            <!-- Result -->
+            <div class="bg-white/60 rounded-2xl p-6 text-center border border-white shadow-sm flex flex-col justify-center h-full">
+                <div id="dose-result">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Safe Single Dose</p>
+                    <h3 class="text-4xl font-display font-extrabold text-purple-600 mb-1" id="dose-amount">-- mg</h3>
+                    <p class="text-sm text-gray-500" id="dose-info">Enter weight to calculate</p>
+                    
+                    <div class="mt-4 pt-4 border-t border-dashed border-gray-300 text-left text-xs text-gray-400 space-y-1">
+                        <p>ℹ️ Always use the dropper provided with medicine.</p>
+                        <p>ℹ️ Wait 4-6 hours between doses.</p>
+                    </div>
+                </div>
+                
+                <!-- Safety Warning Overlay -->
+                <div id="dose-warning" class="hidden bg-red-100 text-red-700 p-4 rounded-xl font-bold text-sm">
+                    ⚠️ Ibuprofen is NOT safe for babies under 6 months. Use Paracetamol instead.
+                </div>
             </div>
         </div>
-        {% endfor %}
     </div>
+
+    <!-- Symptom Checker -->
+    <div class="bg-white rounded-[2.5rem] p-8 shadow-xl border border-gray-100" id="symptomChecker">
+        <div class="text-center mb-8">
+            <h2 class="text-2xl font-display font-bold text-warm-dark">Symptom Quick-Check 🩺</h2>
+            <p class="text-warm-gray">Select a symptom to get specific, safety-first advice.</p>
+        </div>
+
+        <!-- Step 1: Category Selection -->
+        <div id="check-step-1" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button onclick="checkSymptom('fever')" class="p-6 rounded-2xl bg-red-50 text-red-600 hover:bg-red-100 transition flex flex-col items-center gap-2 group">
+                <span class="text-4xl group-hover:scale-110 transition-transform">🤒</span>
+                <span class="font-bold">Fever</span>
+            </button>
+            <button onclick="checkSymptom('tummy')" class="p-6 rounded-2xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition flex flex-col items-center gap-2 group">
+                <span class="text-4xl group-hover:scale-110 transition-transform">🤮</span>
+                <span class="font-bold">Tummy</span>
+            </button>
+            <button onclick="checkSymptom('skin')" class="p-6 rounded-2xl bg-pink-50 text-pink-600 hover:bg-pink-100 transition flex flex-col items-center gap-2 group">
+                <span class="text-4xl group-hover:scale-110 transition-transform">🧴</span>
+                <span class="font-bold">Skin/Rash</span>
+            </button>
+            <button onclick="checkSymptom('breath')" class="p-6 rounded-2xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex flex-col items-center gap-2 group">
+                <span class="text-4xl group-hover:scale-110 transition-transform">🫁</span>
+                <span class="font-bold">Breathing</span>
+            </button>
+        </div>
+
+        <!-- Step 2: Result Display -->
+        <div id="check-result" class="hidden mt-6 bg-gray-50 rounded-2xl p-6 border-l-4 border-l-warm-teal animate-fade-in">
+            <h3 class="font-bold text-xl mb-2 flex items-center gap-2" id="result-title">Title</h3>
+            <p class="text-gray-700 mb-4" id="result-desc">Description</p>
+            
+            <div class="bg-white p-4 rounded-xl border border-dashed border-gray-300">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Recommendation</p>
+                <p class="font-bold text-warm-dark text-lg" id="result-action">Action</p>
+            </div>
+
+            <button onclick="resetChecker()" class="mt-4 text-sm text-gray-500 hover:text-warm-dark underline">Check Another</button>
+        </div>
+    </div>
+
+
+
+    <script>
+        // CLIENT-SIDE LOGIC ENGINE
+        const BABY_AGE_MONTHS = Number("{{ age }}"); 
+        
+        function checkSymptom(type) {
+            document.getElementById('check-step-1').classList.add('hidden');
+            const res = document.getElementById('check-result');
+            const title = document.getElementById('result-title');
+            const desc = document.getElementById('result-desc');
+            const action = document.getElementById('result-action');
+            const box = document.getElementById('check-result');
+
+            res.classList.remove('hidden');
+
+            // LOGIC TREE
+            if (type === 'fever') {
+                title.innerHTML = "🤒 Fever Analysis";
+                if (BABY_AGE_MONTHS < 3) {
+                    box.className = "mt-6 bg-red-50 rounded-2xl p-6 border-l-4 border-l-red-600 animate-pulse";
+                    desc.innerText = `Since baby is only ${BABY_AGE_MONTHS} months old, a fever is URGENT.`;
+                    action.innerText = "🚨 EMERGENCY: Rectal temp > 100.4°F (38°C) is dangerous at this age. Call Doctor/Go to ER Immediately.";
+                } else {
+                    box.className = "mt-6 bg-yellow-50 rounded-2xl p-6 border-l-4 border-l-yellow-500 animate-fade-in";
+                    desc.innerText = `At ${BABY_AGE_MONTHS} months, fevers are often viral.`;
+                    action.innerText = "💊 Monitor. Hydrate. Call doctor if > 102°F or lasts 3+ days. If active/playing, likely okay.";
+                }
+            } 
+            else if (type === 'tummy') {
+                title.innerHTML = "🤮 Stomach Issues";
+                box.className = "mt-6 bg-orange-50 rounded-2xl p-6 border-l-4 border-l-orange-500 animate-fade-in";
+                desc.innerText = "Vomiting or diarrhea can cause dehydration quickly.";
+                
+                if (BABY_AGE_MONTHS < 6) {
+                    action.innerText = "💧 STRICTLY NO PLAIN WATER. Continue breastfeeding or formula on demand. Consult doctor before using electrolytes.";
+                } else {
+                    action.innerText = "💧 Hydration is key! Offer small sips of water or Pedialyte. Avoid juice/soda. Watch for dry diapers.";
+                }
+            }
+            else if (type === 'skin') {
+                title.innerHTML = "🧴 Skin & Rashes";
+                box.className = "mt-6 bg-pink-50 rounded-2xl p-6 border-l-4 border-l-pink-500 animate-fade-in";
+                desc.innerText = "Common rashes include heat rash, eczema, or viral rash.";
+                action.innerText = "🔍 Press the rash: If it FADES, it's likely minor. If it DOES NOT FADE , go to ER immediately.";
+            }
+            else if (type === 'breath') {
+                title.innerHTML = "🫁 Breathing Check";
+                box.className = "mt-6 bg-blue-50 rounded-2xl p-6 border-l-4 border-l-blue-500 animate-fade-in";
+                desc.innerText = "Respiratory distress needs immediate attention.";
+                action.innerText = "🚑 Watch ribs: If they suck in when breathing, or nostrils flare, go to ER. If just noisy congestion, use saline drops & suction.";
+            }
+        }
+
+        // DOSAGE CALCULATOR
+        let currentMed = 'paracetamol';
+        const weightInput = document.getElementById('calc-weight');
+        
+        function setMedicine(med) {
+            currentMed = med;
+            
+            // Toggle Buttons
+            const btnPara = document.getElementById('btn-para');
+            const btnIbu = document.getElementById('btn-ibu');
+            
+            if (med === 'paracetamol') {
+                btnPara.classList.add('ring-2', 'ring-purple-500', 'bg-purple-50', 'text-purple-700', 'border-purple-100');
+                btnPara.classList.remove('bg-gray-50', 'text-gray-500', 'border-gray-100');
+                
+                btnIbu.classList.remove('ring-2', 'ring-purple-500', 'bg-purple-50', 'text-purple-700', 'border-purple-100');
+                btnIbu.classList.add('bg-gray-50', 'text-gray-500', 'border-gray-100');
+            } else {
+                btnIbu.classList.add('ring-2', 'ring-purple-500', 'bg-purple-50', 'text-purple-700', 'border-purple-100');
+                btnIbu.classList.remove('bg-gray-50', 'text-gray-500', 'border-gray-100');
+                
+                btnPara.classList.remove('ring-2', 'ring-purple-500', 'bg-purple-50', 'text-purple-700', 'border-purple-100');
+                btnPara.classList.add('bg-gray-50', 'text-gray-500', 'border-gray-100');
+            }
+            
+            calculateDose();
+        }
+
+        function calculateDose() {
+            const weight = parseFloat(weightInput.value);
+            const resultBox = document.getElementById('dose-result');
+            const warningBox = document.getElementById('dose-warning');
+            const amount = document.getElementById('dose-amount');
+            const info = document.getElementById('dose-info');
+
+            if (!weight || weight <= 0) {
+                amount.innerText = "-- mg";
+                info.innerText = "Enter valid weight";
+                resultBox.classList.remove('hidden');
+                warningBox.classList.add('hidden');
+                return;
+            }
+
+            // SAFETY CHECK: Ibuprofen < 6 months
+            if (currentMed === 'ibuprofen' && BABY_AGE_MONTHS < 6) {
+                resultBox.querySelector('#dose-amount').parentElement.classList.add('hidden'); // Hide result text
+                document.getElementById('dose-result').children[0].classList.add('hidden'); // Hide title
+                document.getElementById('dose-result').children[1].classList.add('hidden'); // Hide amount
+                document.getElementById('dose-result').children[2].classList.add('hidden'); // Hide info
+                document.getElementById('dose-result').children[3].classList.add('hidden'); // Hide tips
+                
+                warningBox.classList.remove('hidden');
+                return;
+            } else {
+                 // Show result elements
+                resultBox.querySelector('#dose-amount').parentElement.classList.remove('hidden');
+                document.getElementById('dose-result').children[0].classList.remove('hidden');
+                document.getElementById('dose-result').children[1].classList.remove('hidden');
+                document.getElementById('dose-result').children[2].classList.remove('hidden');
+                document.getElementById('dose-result').children[3].classList.remove('hidden');
+                warningBox.classList.add('hidden');
+            }
+
+            // CALCULATION LOGIC
+            // Paracetamol: 10-15 mg/kg
+            // Ibuprofen: 5-10 mg/kg
+            
+            let minDose, maxDose;
+            
+            if (currentMed === 'paracetamol') {
+                minDose = Math.round(weight * 10);
+                maxDose = Math.round(weight * 15);
+                info.innerText = `Based on 10-15mg/kg for ${weight}kg`;
+            } else {
+                minDose = Math.round(weight * 5);
+                maxDose = Math.round(weight * 10);
+                info.innerText = `Based on 5-10mg/kg for ${weight}kg`;
+            }
+            
+            amount.innerText = `${minDose}-${maxDose} mg`;
+        }
+        
+        // Listen for input changes
+        weightInput.addEventListener('input', calculateDose);
+        
+        // Init
+        // DOSAGE CALCULATOR INIT
+        calculateDose();
+
+
+
+
+    </script>
+
+
 
     <div class="text-center mt-12 text-sm text-gray-400">
         <p>Disclaimer: This information is for educational purposes only and not a substitute for professional medical advice.</p>
     </div>
+
+    <!-- Edit Modal -->
+    <div id="medicalModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl transform scale-95 transition-transform duration-300" id="medicalModalContent">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-warm-teal to-teal-600 p-6 rounded-t-2xl flex justify-between items-center">
+                <h3 class="text-white font-bold text-xl">Edit Medical ID</h3>
+                <button onclick="closeMedicalModal()" class="text-white/80 hover:text-white text-2xl">&times;</button>
+            </div>
+            
+            <form id="medicalForm" class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Doctor Name</label>
+                        <input type="text" name="doctor_name" value="{{ mid.get('doctor_name', '') }}" class="w-full rounded-xl border-gray-200 focus:border-warm-teal focus:ring focus:ring-warm-teal/20" placeholder="Dr. Smith">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Phone</label>
+                        <input type="tel" name="doctor_phone" value="{{ mid.get('doctor_phone', '') }}" class="w-full rounded-xl border-gray-200 focus:border-warm-teal focus:ring focus:ring-warm-teal/20" placeholder="555-0123">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Insurance Provider</label>
+                    <input type="text" name="insurance_provider" value="{{ mid.get('insurance_provider', '') }}" class="w-full rounded-xl border-gray-200 focus:border-warm-teal focus:ring focus:ring-warm-teal/20" placeholder="Provider Name">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Policy Number</label>
+                    <input type="text" name="policy_number" value="{{ mid.get('policy_number', '') }}" class="w-full rounded-xl border-gray-200 focus:border-warm-teal focus:ring focus:ring-warm-teal/20" placeholder="Policy #">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Allergies (Important)</label>
+                    <textarea name="allergies" rows="2" class="w-full rounded-xl border-gray-200 focus:border-warm-coral focus:ring focus:ring-warm-coral/20" placeholder="e.g. Peanuts, Penicillin...">{{ mid.get('allergies', '') }}</textarea>
+                </div>
+
+                <div class="pt-4 flex justify-end">
+                    <button type="button" onclick="closeMedicalModal()" class="mr-3 px-4 py-2 text-gray-500 hover:text-warm-dark font-bold">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-warm-teal text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition transform hover:-translate-y-0.5">Save Details</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+    function openMedicalModal() {
+        const modal = document.getElementById('medicalModal');
+        const content = document.getElementById('medicalModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeMedicalModal() {
+        const modal = document.getElementById('medicalModal');
+        const content = document.getElementById('medicalModalContent');
+        modal.classList.add('opacity-0');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+
+    document.getElementById('medicalForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button[type="submit"]');
+        const origText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Saving...";
+
+        const formData = new FormData(this);
+
+        fetch('/update_medical_id', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.textContent = origText;
+            
+            if(data.success) {
+                // Update DOM
+                document.getElementById('display-allergies').textContent = formData.get('allergies') || "None Known";
+                document.getElementById('display-doc').textContent = formData.get('doctor_name') || "Not Listed";
+                
+                const phoneLink = document.getElementById('display-doc-phone');
+                phoneLink.textContent = '📞 ' + (formData.get('doctor_phone') || "Add");
+                phoneLink.href = 'tel:' + formData.get('doctor_phone');
+                
+                document.getElementById('display-insurance').textContent = formData.get('insurance_provider') || "Not Listed";
+                document.getElementById('display-policy').textContent = 'Policy #: ' + (formData.get('policy_number') || "---");
+                
+                showToast("Medical ID Updated", 'success');
+                closeMedicalModal();
+            } else {
+                showToast("Error updating ID", 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            btn.disabled = false;
+            btn.textContent = origText;
+            showToast("Connection failed", 'error');
+        });
+    });
+</script>
 {% endblock %}

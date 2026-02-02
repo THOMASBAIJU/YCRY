@@ -4,9 +4,13 @@ from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 import os
 import certifi
+from dotenv import load_dotenv
 
+load_dotenv()
 # CONFIG
-MONGO_URI = "mongodb+srv://thomasbaiju02_db_user:abm95KG2rEuItPWP@cluster0.9iivpdx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    print("⚠️ WARNING: MONGO_URI not found in .env file!")
 DB_NAME = "ycry"
 
 client = None
@@ -159,3 +163,70 @@ def get_completed_vaccines(username):
     if user and user.get('vaccines'):
         return [v['name'] for v in user['vaccines']]
     return []
+
+# --- MEDICAL ID FUNCTIONS ---
+def save_medical_id(username, data):
+    """
+    data = {"doctor_name": ..., "doctor_phone": ..., "insurance_provider": ..., "policy_number": ..., "allergies": ...}
+    """
+    if db is None: init_db()
+    db.users.update_one(
+        {"_id": username},
+        {"$set": {"medical_id": data}}
+    )
+
+def get_medical_id(username):
+    if db is None: init_db()
+    user = db.users.find_one({"_id": username})
+    return user.get('medical_id', {}) if user else {}
+
+# --- FOOD LOG FUNCTIONS ---
+def add_food_log(username, food, reaction):
+    if db is None: init_db()
+    today = str(datetime.date.today())
+    
+    log_entry = {
+        "food": food,
+        "reaction": reaction,
+        "date": today
+    }
+    
+    # 1. Remove existing if any (Overwrite logic)
+    db.users.update_one(
+        {"_id": username},
+        {"$pull": {"food_log": {"food": food}}}
+    )
+    
+    # 2. Add new entry at top
+    db.users.update_one(
+        {"_id": username},
+        {"$push": {"food_log": {"$each": [log_entry], "$position": 0}}}
+    )
+
+    # 3. AUTO-SYNC: If Allergy, add to Medical ID
+    if "Allergy" in reaction:
+        user = db.users.find_one({"_id": username})
+        mid = user.get('medical_id', {})
+        current_allergies = mid.get('allergies', '')
+        
+        # Avoid duplicate appending
+        if food.lower() not in current_allergies.lower():
+            new_allergies = f"{current_allergies}, {food}" if current_allergies else food
+            mid['allergies'] = new_allergies
+            
+            db.users.update_one(
+                {"_id": username},
+                {"$set": {"medical_id": mid}}
+            )
+
+def remove_food_log(username, food):
+    if db is None: init_db()
+    db.users.update_one(
+        {"_id": username},
+        {"$pull": {"food_log": {"food": food}}}
+    )
+
+def get_food_log(username):
+    if db is None: init_db()
+    user = db.users.find_one({"_id": username})
+    return user.get('food_log', []) if user else []

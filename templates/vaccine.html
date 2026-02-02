@@ -90,17 +90,15 @@
                         </td>
                         <td class="py-5 px-6 text-right">
                              {% if item.status != 'Completed' and item.can_take %}
-                                <form action="/vaccine" method="POST" class="inline-block">
                                     <div class="flex flex-col gap-2">
                                         {% for shot in item.shots %}
                                             {% if not shot.done %}
-                                            <button type="submit" name="vaccine_name" value="{{ shot.name }}" class="btn-primary text-[10px] px-3 py-1 shadow-sm hover:shadow-md whitespace-nowrap">
+                                            <button onclick="markVaccine(this, '{{ shot.name }}')" class="btn-primary text-[10px] px-3 py-1 shadow-sm hover:shadow-md whitespace-nowrap transition-all">
                                                 Mark {{ shot.name }} Done
                                             </button>
                                             {% endif %}
                                         {% endfor %}
                                     </div>
-                                </form>
                             {% else %}
                                 <span class="text-gray-300 text-2xl">🧸</span>
                             {% endif %}
@@ -111,5 +109,45 @@
             </table>
         </div>
     </div>
+    </div>
 </div>
+
+<script>
+function markVaccine(btn, name) {
+    // Optimistic UI: Disable immediately
+    btn.disabled = true;
+    btn.textContent = "Updating...";
+    
+    const formData = new FormData();
+    formData.append('vaccine_name', name);
+    
+    fetch('/vaccine', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if(data.success) {
+            // Transform button into "Done" badge
+            btn.className = "inline-block mr-2 mb-1 px-2 py-0.5 rounded border bg-green-100 border-green-200 text-green-700 text-xs font-bold";
+            btn.innerHTML = `${name} ✓`;
+            btn.onclick = null; // Remove handler
+            
+            // Optional: Check if we should update the left column badge too? 
+            // For now, simple visual feedback is enough.
+            showToast(`${name} marked as done!`, 'success');
+        } else {
+            showToast("Error: " + data.error, 'error');
+            btn.disabled = false;
+            btn.textContent = `Mark ${name} Done`;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast("Connection failed", 'error');
+        btn.disabled = false;
+        btn.textContent = `Mark ${name} Done`;
+    });
+}
+</script>
 {% endblock %}
