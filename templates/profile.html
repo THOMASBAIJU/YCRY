@@ -32,14 +32,14 @@
             </div>
             
             <div class="pb-2 mb-2 bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/40 shadow-lg glass-premium">
-                <h1 class="text-3xl font-display font-extrabold text-warm-dark leading-none mb-1">{{ profile['baby_name'] }}</h1>
+                <h1 id="display-name" class="text-3xl font-display font-extrabold text-warm-dark leading-none mb-1">{{ profile['baby_name'] }}</h1>
                 <p class="text-warm-dark font-bold text-sm opacity-80 flex items-center gap-2">
-                    <span>🎂 {{ profile['dob'] }}</span>
+                    <span id="display-dob">🎂 {{ profile['dob'] }}</span>
                     <span class="w-1 h-1 rounded-full bg-warm-gray"></span>
-                    <span>{{ profile['gender'] }}</span>
+                    <span id="display-gender">{{ profile['gender'] }}</span>
                 </p>
                 <div class="mt-2">
-                     <span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm
+                     <span id="display-blood" class="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm
                         {% if profile['blood_group'] == 'A+' or profile['blood_group'] == 'A-' %} bg-purple-100 text-purple-700
                         {% elif 'B' in profile['blood_group'] %} bg-blue-100 text-blue-700
                         {% else %} bg-pink-100 text-pink-700 {% endif %}">
@@ -76,23 +76,23 @@
                 <ul class="space-y-4">
                     <li class="flex justify-between items-center text-sm group">
                         <span class="text-warm-gray group-hover:text-warm-teal transition-colors">Weight</span>
-                        <span class="font-bold text-warm-dark">{{ profile['weight_birth'] }} kg</span>
+                        <span id="display-weight" class="font-bold text-warm-dark">{{ profile['weight_birth'] }} kg</span>
                     </li>
                     <li class="flex justify-between items-center text-sm group">
                         <span class="text-warm-gray group-hover:text-warm-teal transition-colors">Height</span>
-                        <span class="font-bold text-warm-dark">{{ profile['height_birth'] }} cm</span>
+                        <span id="display-height" class="font-bold text-warm-dark">{{ profile['height_birth'] }} cm</span>
                     </li>
                     <li class="flex justify-between items-center text-sm group">
                         <span class="text-warm-gray group-hover:text-warm-teal transition-colors">Head Circ.</span>
-                        <span class="font-bold text-warm-dark">{{ profile['head_circ'] }} cm</span>
+                        <span id="display-head" class="font-bold text-warm-dark">{{ profile['head_circ'] }} cm</span>
                     </li>
                     <li class="flex justify-between items-center text-sm group">
                         <span class="text-warm-gray group-hover:text-warm-teal transition-colors">Chest Circ.</span>
-                        <span class="font-bold text-warm-dark">{{ profile['chest_circ'] }} cm</span>
+                        <span id="display-chest" class="font-bold text-warm-dark">{{ profile['chest_circ'] }} cm</span>
                     </li>
                      <li class="flex justify-between items-center text-sm mt-2 pt-2 border-t border-gray-100">
                         <span class="text-warm-gray">Apgar Score</span>
-                        <span class="font-bold px-2 py-0.5 rounded bg-green-100 text-green-700 shadow-sm">{{ profile['apgar_score'] }}</span>
+                        <span id="display-apgar" class="font-bold px-2 py-0.5 rounded bg-green-100 text-green-700 shadow-sm">{{ profile['apgar_score'] }}</span>
                     </li>
                 </ul>
             </div>
@@ -142,7 +142,7 @@
                     <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-warm-gray hover:text-warm-coral text-2xl">&times;</button>
                 </div>
                 
-                <form action="/profile" method="POST" enctype="multipart/form-data" class="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <form id="profileForm" enctype="multipart/form-data" class="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     
                     <div class="grid md:grid-cols-2 gap-6 mb-6">
                         <div class="col-span-2">
@@ -221,4 +221,60 @@
     </div>
 
 </div>
+</div>
+
+<script>
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button[type="submit"]');
+        const origText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Saving...";
+        
+        const formData = new FormData(this);
+        
+        fetch('/profile', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.textContent = origText;
+            
+            if(data.success) {
+                // Update DOM elements
+                document.getElementById('display-name').textContent = formData.get('baby_name');
+                document.getElementById('display-dob').textContent = '🎂 ' + formData.get('dob');
+                document.getElementById('display-gender').textContent = formData.get('gender');
+                document.getElementById('display-blood').textContent = 'BLOOD: ' + formData.get('blood_group');
+                document.getElementById('display-weight').textContent = formData.get('weight') + ' kg';
+                document.getElementById('display-height').textContent = formData.get('height') + ' cm';
+                document.getElementById('display-head').textContent = formData.get('head_circ') + ' cm';
+                document.getElementById('display-chest').textContent = formData.get('chest_circ') + ' cm';
+                document.getElementById('display-apgar').textContent = formData.get('apgar');
+                
+                // Hide modal
+                document.getElementById('editModal').classList.add('hidden');
+                
+                // Show success alert
+                showToast(data.message, 'success');
+                
+                // If picture changed, we might need reload, but let's assume text mostly. 
+                if(formData.get('baby_pic').size > 0) {
+                     // small refresh for pic
+                     location.reload(); 
+                }
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            btn.disabled = false;
+            btn.textContent = origText;
+            showToast("Connection error.", 'error');
+        });
+    });
+</script>
 {% endblock %}

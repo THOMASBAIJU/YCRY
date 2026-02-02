@@ -17,8 +17,67 @@ import google.generativeai as genai
 import threading
 import json
 app = Flask(__name__)
-app.secret_key = "SUPER_SECRET_KEY_YCRY"
-# Reload Trigger: 1
+app.secret_key = os.urandom(24) # Random key = Logout on server restart
+# Reload Trigger: 2
+
+# --- STATIC RECIPES ---
+STATIC_RECIPES = {
+    "Pureed Vegetables (Carrot, Sweet Potato)": {
+        "title": "Simple Veggie Puree",
+        "ingredients": ["1 cup washed & peeled vegetables (carrot/sweet potato)", "Water for steaming", "Breast milk or formula (optional)"],
+        "steps": ["Chop vegetables into small chunks.", "Steam or boil until very soft (15-20 mins).", "Mash or blend with a little water/milk until smooth.", "Cool before serving."]
+    },
+    "Iron-fortified Cereal": {
+        "title": "Baby's First Cereal",
+        "ingredients": ["1 tbsp Iron-fortified baby cereal", "4-5 tbsp Breast milk, formula, or water"],
+        "steps": ["Mix cereal and liquid in a bowl.", "Stir until smooth.", "Adjust liquid to get a runny texture for first-timers.", "Serve immediately."]
+    },
+    "Mashed Banana": {
+        "title": "Banana Mash",
+        "ingredients": ["1/2 ripe Banana"],
+        "steps": ["Peel the banana.", "Mash thoroughly with a fork until no lumps remain.", "Add a little milk if needed to thin it out.", "Serve fresh."]
+    },
+    "Mashed Fruits": {
+        "title": "Stewed Fruit Mash",
+        "ingredients": ["1 Apple or Pear (peeled & cored)", "Water"],
+        "steps": ["Chop fruit into small pieces.", "Steam for 10-15 mins until soft.", "Mash or puree until smooth.", "Let it cool completely."]
+    },
+    "Soft Cooked Pasta": {
+        "title": "First Pasta",
+        "ingredients": ["Small handful of pasta shapes", "Tomato sauce (optional, low salt)"],
+        "steps": ["Boil pasta until very soft (overcooked is better).", "Drain and let cool.", "Chop into tiny pieces if large.", "Mix with a little sauce or olive oil."]
+    },
+    "Yogurt": {
+        "title": "Plain Yogurt Bowl",
+        "ingredients": ["Plain whole-milk yogurt (unsweetened)"],
+        "steps": ["Spoon yogurt into a bowl.", "Optional: Mix in a little fruit puree.", "Serve chilled."]
+    },
+    "Scrambled Egg Yolk": {
+        "title": "Soft Egg Yolk",
+        "ingredients": ["1 Egg (large)"],
+        "steps": ["Hard boil the egg (10-12 mins).", "Peel and remove the yolk.", "Mash the yolk with a little milk or water.", "Serve warm."]
+    },
+    "Finger Foods": {
+        "title": "Basic Finger Foods",
+        "ingredients": ["Banana chunks, Avocados slices, or Steamed Carrot sticks"],
+        "steps": ["Cut food into stick shapes (size of an adult pinky finger).", "Ensure it is soft enough to squish between fingers.", "Place on high chair tray for baby to grab."]
+    },
+    "Small pieces of Chicken": {
+        "title": "Poached Chicken",
+        "ingredients": ["Small chicken breast fillet"],
+        "steps": ["Poach chicken in simmering water for 15-20 mins.", "Ensure it is fully cooked (white all through).", "Shred into very small, swallowable pieces.", "Moisten with broth."]
+    },
+    "Cheese": {
+        "title": "Cheese Strips",
+        "ingredients": ["Mild Cheddar or Mozzarella"],
+        "steps": ["Cut cheese into thin strips.", "Serve as a finger food."]
+    },
+    "Most Family Foods": {
+        "title": "Family Meal Adaptation",
+        "ingredients": ["Your regular family meal (low salt/sugar)"],
+        "steps": ["Take a portion of the family meal.", "Chop or mash to appropriate texture.", "Ensure no choking hazards (nuts, grapes).", "Serve warm."]
+    }
+}
 
 # CONFIG
 PROFILE_FOLDER = 'static/profile_pics'
@@ -329,33 +388,35 @@ def profile():
     if 'user' not in session: return redirect(url_for('login'))
     
     if request.method == 'POST':
-        b_name = request.form['baby_name']
-        dob = request.form['dob']
-        gender = request.form['gender']
-        blood = request.form['blood_group']
-        weight = float(request.form['weight'])
-        height = float(request.form['height'])
-        head = float(request.form['head_circ'])
-        chest = float(request.form['chest_circ'])
-        apgar = int(request.form['apgar'])
-        
-        old_profile = db.get_profile(session['user'])
-        pic_filename = old_profile['profile_pic'] if old_profile else "" 
+        try:
+            b_name = request.form['baby_name']
+            dob = request.form['dob']
+            gender = request.form['gender']
+            blood = request.form['blood_group']
+            weight = float(request.form['weight'])
+            height = float(request.form['height'])
+            head = float(request.form['head_circ'])
+            chest = float(request.form['chest_circ'])
+            apgar = int(request.form['apgar'])
+            
+            old_profile = db.get_profile(session['user'])
+            pic_filename = old_profile['profile_pic'] if old_profile else "" 
 
-        if 'baby_pic' in request.files:
-            file = request.files['baby_pic']
-            if file.filename != '':
-                ext = file.filename.split('.')[-1]
-                pic_filename = f"{session['user']}_profile.{ext}"
-                file.save(os.path.join(app.config['PROFILE_FOLDER'], pic_filename))
+            if 'baby_pic' in request.files:
+                file = request.files['baby_pic']
+                if file.filename != '':
+                    ext = file.filename.split('.')[-1]
+                    pic_filename = f"{session['user']}_profile.{ext}"
+                    file.save(os.path.join(app.config['PROFILE_FOLDER'], pic_filename))
 
-        status, report = analyze_birth_health(weight, apgar, head, chest)
-        
-        db.save_full_profile(session['user'], 
-                            (b_name, dob, gender, blood, weight, height, head, chest, apgar, report, pic_filename))
-        
-        flash("✅ Profile & Picture Updated!")
-        return redirect(url_for('profile'))
+            status, report = analyze_birth_health(weight, apgar, head, chest)
+            
+            db.save_full_profile(session['user'], 
+                                (b_name, dob, gender, blood, weight, height, head, chest, apgar, report, pic_filename))
+            
+            return jsonify({"success": True, "message": "✅ Profile & Picture Updated!"})
+        except Exception as e:
+            return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
     data = db.get_profile(session['user'])
     return render_template('profile.html', profile=data)
@@ -471,12 +532,15 @@ def vaccine():
     if 'user' not in session: return redirect(url_for('login'))
     prof = db.get_profile(session['user'])
     if not prof: return redirect(url_for('profile'))
+    
     if request.method == 'POST':
+        # AJAX Request Handler
         vaccine_name = request.form.get('vaccine_name')
         if vaccine_name:
             db.mark_vaccine_done(session['user'], vaccine_name)
-            flash(f"✅ Marked {vaccine_name} as completed!")
-            return redirect(url_for('vaccine'))
+            return jsonify({"success": True, "vaccine": vaccine_name})
+        return jsonify({"success": False, "error": "No vaccine name provided"}), 400
+
     completed = db.get_completed_vaccines(session['user'])
     schedule, show_warning = get_vaccine_schedule(prof['dob'], completed)
     return render_template('vaccine.html', schedule=schedule, baby_name=prof['baby_name'], warning=show_warning)
@@ -576,7 +640,42 @@ def nutrition():
     
     age_months = calculate_age(prof['dob'])
     guide = get_nutrition_guide(age_months)
-    return render_template('nutrition.html', guide=guide, age=age_months, baby_name=prof['baby_name'])
+    food_log = db.get_food_log(session['user'])
+    
+    return render_template('nutrition.html', 
+                          guide=guide, 
+                          age=age_months, 
+                          baby_name=prof['baby_name'],
+                          food_log=food_log,
+                          recipes=STATIC_RECIPES)
+
+@app.route('/add_food_log', methods=['POST'])
+def add_food_log():
+    if 'user' not in session: return jsonify({'success': False, 'error': 'Login required'}), 401
+    
+    food = request.form.get('food')
+    reaction = request.form.get('reaction')
+    
+    if food and reaction:
+        db.add_food_log(session['user'], food, reaction)
+        return jsonify({
+            'success': True,
+            'food': food,
+            'reaction': reaction,
+            'date': str(datetime.date.today())
+        })
+    else:
+        return jsonify({'success': False, 'error': 'Missing information.'}), 400
+
+@app.route('/remove_food_log', methods=['POST'])
+def remove_food_log():
+    if 'user' not in session: return jsonify({'success': False, 'error': 'Login required'}), 401
+    
+    food = request.form.get('food')
+    if food:
+        db.remove_food_log(session['user'], food)
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'error': 'Missing food name'}), 400
 
 @app.route('/exercises')
 def exercises():
@@ -595,8 +694,34 @@ def health():
     if not prof: return redirect(url_for('profile'))
     
     warnings = get_warning_signs()
-    warnings = get_warning_signs()
-    return render_template('health.html', warnings=warnings, baby_name=prof['baby_name'])
+    medical_id = db.get_medical_id(session['user'])
+    age_months = calculate_age(prof['dob'])
+    
+    # Get latest logged weight, fallback to birth weight
+    latest_growth = db.get_latest_growth(session['user'])
+    current_weight = latest_growth['weight'] if latest_growth else prof['weight_birth']
+    
+    return render_template('health.html', warnings=warnings, 
+                          baby_name=prof['baby_name'], 
+                          profile=prof,
+                          mid=medical_id,
+                          age=age_months,
+                          weight=current_weight)
+
+@app.route('/update_medical_id', methods=['POST'])
+def update_medical_id():
+    if 'user' not in session: return jsonify({'success': False, 'error': 'Login required'}), 401
+    
+    data = {
+        "doctor_name": request.form.get('doctor_name'),
+        "doctor_phone": request.form.get('doctor_phone'),
+        "insurance_provider": request.form.get('insurance_provider'),
+        "policy_number": request.form.get('policy_number'),
+        "allergies": request.form.get('allergies')
+    }
+    
+    db.save_medical_id(session['user'], data)
+    return jsonify({'success': True})
 
 @app.route('/assistant')
 def assistant():
@@ -913,28 +1038,28 @@ def get_nutrition_guide(age):
 
 def get_exercises(age):
     if age < 3:
-        exercises = [{"name": "Tummy Time", "desc": "Place baby on stomach while awake.", "benefit": "Strengthens neck & shoulders", "video_id": "bq0S_nulAyk"}]
+        exercises = [{"name": "Tummy Time", "desc": "Place baby on stomach while awake to build neck strength.", "benefit": "Strengthens neck & shoulders", "video_id": "bq0S_nulAyk"}]
         
         if age == 1:
-            exercises.append({"name": "Leg Bicycle", "desc": "Gently cycle baby's legs towards tummy.", "benefit": "Relieves gas & constipations", "video_id": "nzix4pZtdXs"})
+            exercises.append({"name": "Leg Bicycle", "desc": "Gently cycle baby's legs towards tummy to relieve gas.", "benefit": "Relieves gas & constipations", "video_id": "nzix4pZtdXs"})
         else:
-            exercises.append({"name": "Visual Tracking", "desc": "Move a toy slowly side-to-side.", "benefit": "Improves eye coordination", "video_id": "k3Y0f24aI74"})
+            exercises.append({"name": "Visual Tracking", "desc": "Move a high-contrast toy slowly side-to-side.", "benefit": "Improves eye coordination", "video_id": "eNl_cR4yM0c"})
             
         return exercises
     elif age < 6:
         return [
-            {"name": "Supported Sit", "desc": "Prop baby up with pillows.", "benefit": "Core strength", "video_id": "_WwlTvU1DOs"},
-            {"name": "Reach & Grab", "desc": "Hold toy just out of reach.", "benefit": "Hand-eye coordination", "video_id": "p4vW9K2E138"}
+            {"name": "Supported Sit", "desc": "Prop baby up with pillows or between your legs.", "benefit": "Core strength", "video_id": "YxL7J7f3oVs"},
+            {"name": "Reach & Grab", "desc": "Hold toy just out of reach to encourage extension.", "benefit": "Hand-eye coordination", "video_id": "qT4V1G1lC-M"}
         ]
     elif age < 9:
         return [
-            {"name": "Peek-a-Boo", "desc": "Hide face behind hands/cloth.", "benefit": "Object permanence", "video_id": "8PIGK9l8K1c"}, 
-            {"name": "Obstacle Course", "desc": "Pillows on floor to crawl over.", "benefit": "Motor skills", "video_id": "T050VqC69Qk"}
+            {"name": "Peek-a-Boo", "desc": "Hide face behind hands or cloth to teach object permanence.", "benefit": "Cognitive development", "video_id": "lVFj91Z1AfM"}, 
+            {"name": "Obstacle Course", "desc": "Use pillows on floor for baby to crawl over.", "benefit": "Motor skills", "video_id": "Fj-0l37d8qg"}
         ]
     else: # 9-12+
         return [
-            {"name": "Cruising", "desc": "Place toys on sofa to encourage standing.", "benefit": "Leg strength for walking", "video_id": "T050VqC69Qk"},
-            {"name": "Stacking Blocks", "desc": "Build simple towers.", "benefit": "Fine motor skills", "video_id": "8PIGK9l8K1c"}
+            {"name": "Cruising", "desc": "Place toys on sofa to encourage standing and stepping sideways.", "benefit": "Leg strength for walking", "video_id": "Z-t3v_N-O6g"},
+            {"name": "Stacking Blocks", "desc": "Encourage baby to stack 2-3 blocks.", "benefit": "Fine motor skills", "video_id": "aG3m0iS1K80"}
         ]
 
 def get_warning_signs():
