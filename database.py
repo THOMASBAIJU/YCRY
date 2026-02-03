@@ -33,22 +33,44 @@ def init_db():
         print(f"❌ MongoDB Connection Failed: {e}")
 
 # --- USER FUNCTIONS ---
-def create_user(username, password, name):
+# --- HELPERS ---
+def get_next_sequence(name):
+    """Generates the next unique numeric ID"""
+    if db is None: init_db()
+    ret = db.counters.find_one_and_update(
+        {"_id": name},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
+    )
+    return ret['seq']
+
+# --- USER FUNCTIONS ---
+def create_user(username, password, name, email):
     if db is None: init_db()
     users = db.users
     
-    if users.find_one({"_id": username}):
+    # Check if username exists (now querying 'username' field)
+    # Also check if email exists to be safe
+    if users.find_one({"username": username}):
         return False
         
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     
+    # Generate Numeric ID
+    user_id = get_next_sequence("userid")
+    
     user_doc = {
-        "_id": username,
+        "_id": user_id,
+        "username": username,
         "password": hashed_pw,
         "caregiver_name": name,
+        "email": email,
         "profile": {},
         "growth": [],
-        "vaccines": []
+        "vaccines": [],
+        "food_log": [],
+        "medical_id": {}
     }
     
     try:
@@ -61,13 +83,13 @@ def create_user(username, password, name):
 def delete_user(username):
     if db is None: init_db()
     try:
-        # Find user to get profile pic
-        user = db.users.find_one({"_id": username})
+        # Find user
+        user = db.users.find_one({"username": username})
         if not user:
             return False, None
             
         # Delete user
-        db.users.delete_one({"_id": username})
+        db.users.delete_one({"username": username})
         
         # Get profile pic if exists
         pic = None
@@ -82,7 +104,7 @@ def delete_user(username):
 def login_user(username, password):
     if db is None: init_db()
     try:
-        user = db.users.find_one({"_id": username})
+        user = db.users.find_one({"username": username})
         
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password']):
             # Return tuple: (Name, is_admin)
@@ -98,7 +120,7 @@ def get_all_users():
     if db is None: init_db()
     try:
         # Return list of user documents with just relevant fields
-        return list(db.users.find({}, {"_id": 1, "caregiver_name": 1, "is_admin": 1}))
+        return list(db.users.find({}, {"username": 1, "caregiver_name": 1, "is_admin": 1}))
     except Exception as e:
         print(f"Get All Users Error: {e}")
         return []
@@ -106,10 +128,63 @@ def get_all_users():
 def make_admin(username):
     if db is None: init_db()
     try:
-        db.users.update_one({"_id": username}, {"$set": {"is_admin": True}})
+        db.users.update_one({"username": username}, {"$set": {"is_admin": True}})
         return True
     except Exception as e:
         print(f"Make Admin Error: {e}")
+        return False
+
+def get_user_by_email(email):
+    if db is None: init_db()
+    try:
+        return db.users.find_one({"email": email})
+    except Exception as e:
+        print(f"Get User by Email Error: {e}")
+        return None
+
+def save_reset_otp(username, otp):
+    if db is None: init_db()
+    try:
+        # OTP expires in 15 minutes
+        expiry = datetime.datetime.now() + datetime.timedelta(minutes=15)
+        # Note: We update by username now
+        db.users.update_one(
+            {"username": username},
+            {"$set": {"reset_otp": otp, "reset_otp_expiry": expiry}}
+        )
+        return True
+    except Exception as e:
+        print(f"Save Reset OTP Error: {e}")
+        return False
+
+def verify_reset_otp(username, otp):
+    if db is None: init_db()
+    try:
+        user = db.users.find_one({"username": username})
+        if not user:
+            return False
+        
+        saved_otp = user.get("reset_otp")
+        expiry = user.get("reset_otp_expiry")
+
+        if saved_otp == otp and expiry and expiry > datetime.datetime.now():
+            return True
+        return False
+    except Exception as e:
+        print(f"Verify Reset OTP Error: {e}")
+        return False
+
+def update_password(username, new_password):
+    if db is None: init_db()
+    try:
+        hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        db.users.update_one(
+            {"username": username},
+            {"$set": {"password": hashed_pw}, "$unset": {"reset_otp": "", "reset_otp_expiry": ""}}
+        )
+        return True
+    except Exception as e:
+        print(f"Update Password Error: {e}")
         return False
 
 # --- PROFILE FUNCTIONS ---
@@ -136,13 +211,13 @@ def save_full_profile(username, data):
     }
     
     db.users.update_one(
-        {"_id": username},
+        {"username": username},
         {"$set": {"profile": profile_doc}}
     )
 
 def get_profile(username):
     if db is None: init_db()
-    user = db.users.find_one({"_id": username})
+    user = db.users.find_one({"username": username})
     if user and user.get('profile'):
         return user['profile']
     return None
@@ -153,7 +228,7 @@ def add_growth_record(username, weight, height, date_str=None):
     today = date_str if date_str else str(datetime.date.today())
     
     # Check if a record for today already exists
-    query = {"_id": username, "growth.date": today}
+    query = {"username": username, "growth.date": today}
     update = {"$set": {"growth.$.weight": weight, "growth.$.height": height}}
     
     result = db.users.update_one(query, update)
@@ -166,13 +241,13 @@ def add_growth_record(username, weight, height, date_str=None):
             "height": height
         }
         db.users.update_one(
-            {"_id": username},
+            {"username": username},
             {"$push": {"growth": record}}
         )
 
 def get_latest_growth(username):
     if db is None: init_db()
-    user = db.users.find_one({"_id": username})
+    user = db.users.find_one({"username": username})
     if user and user.get('growth'):
         latest = user['growth'][-1]
         return {"weight": latest['weight'], "height": latest['height']}
@@ -180,7 +255,7 @@ def get_latest_growth(username):
 
 def get_growth_history(username):
     if db is None: init_db()
-    user = db.users.find_one({"_id": username})
+    user = db.users.find_one({"username": username})
     if user and user.get('growth'):
         return user['growth']
     return []
@@ -190,16 +265,16 @@ def mark_vaccine_done(username, vaccine_name):
     today = str(datetime.date.today())
     
     # Check if already exists to avoid duplicates (idempotent)
-    user = db.users.find_one({"_id": username, "vaccines.name": vaccine_name})
+    user = db.users.find_one({"username": username, "vaccines.name": vaccine_name})
     if not user:
         db.users.update_one(
-            {"_id": username},
+            {"username": username},
             {"$push": {"vaccines": {"name": vaccine_name, "date": today}}}
         )
 
 def get_completed_vaccines(username):
     if db is None: init_db()
-    user = db.users.find_one({"_id": username})
+    user = db.users.find_one({"username": username})
     if user and user.get('vaccines'):
         return [v['name'] for v in user['vaccines']]
     return []
@@ -211,13 +286,13 @@ def save_medical_id(username, data):
     """
     if db is None: init_db()
     db.users.update_one(
-        {"_id": username},
+        {"username": username},
         {"$set": {"medical_id": data}}
     )
 
 def get_medical_id(username):
     if db is None: init_db()
-    user = db.users.find_one({"_id": username})
+    user = db.users.find_one({"username": username})
     return user.get('medical_id', {}) if user else {}
 
 # --- FOOD LOG FUNCTIONS ---
@@ -233,19 +308,19 @@ def add_food_log(username, food, reaction):
     
     # 1. Remove existing if any (Overwrite logic)
     db.users.update_one(
-        {"_id": username},
+        {"username": username},
         {"$pull": {"food_log": {"food": food}}}
     )
     
     # 2. Add new entry at top
     db.users.update_one(
-        {"_id": username},
+        {"username": username},
         {"$push": {"food_log": {"$each": [log_entry], "$position": 0}}}
     )
 
     # 3. AUTO-SYNC: If Allergy, add to Medical ID
     if "Allergy" in reaction:
-        user = db.users.find_one({"_id": username})
+        user = db.users.find_one({"username": username})
         mid = user.get('medical_id', {})
         current_allergies = mid.get('allergies', '')
         
@@ -255,18 +330,18 @@ def add_food_log(username, food, reaction):
             mid['allergies'] = new_allergies
             
             db.users.update_one(
-                {"_id": username},
+                {"username": username},
                 {"$set": {"medical_id": mid}}
             )
 
 def remove_food_log(username, food):
     if db is None: init_db()
     db.users.update_one(
-        {"_id": username},
+        {"username": username},
         {"$pull": {"food_log": {"food": food}}}
     )
 
 def get_food_log(username):
     if db is None: init_db()
-    user = db.users.find_one({"_id": username})
+    user = db.users.find_one({"username": username})
     return user.get('food_log', []) if user else []

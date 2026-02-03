@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto min-h-[80vh] flex items-center justify-center py-10">
+    <div class="w-full max-w-md bg-white/60 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-8 md:p-12 border border-white/50" data-aos="fade-up">
+        
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-display font-extrabold text-warm-dark mb-2">Verify Code 🔐</h1>
+            <p class="text-warm-gray">We've sent a 6-digit code to your email.</p>
+        </div>
+
+        <form method="POST" class="space-y-6">
+            <div>
+                <label for="otp" class="label-premium">Enter 6-Digit Code</label>
+                <input type="text" name="otp" id="otp" 
+                       class="input-premium text-center tracking-[1em] font-mono text-2xl" 
+                       placeholder="000000" maxlength="6" pattern="\d{6}" required>
+            </div>
+
+            <button type="submit" class="w-full btn-primary bg-warm-teal hover:bg-teal-600 border-none text-white py-4 text-xl shadow-lg hover:shadow-warm-teal/50 transition-all rounded-2xl flex items-center justify-center gap-2">
+                Verify Code
+            </button>
+            
+            <div class="text-center mt-4">
+                <a href="{{ url_for('forgot_password') }}" class="text-sm font-bold text-warm-gray hover:text-warm-teal transition">Resend Code</a>
+            </div>
+        </form>
+
+    </div>
+</div>
+{% endblock %}

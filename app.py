@@ -9,6 +9,9 @@ import matplotlib
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask_mail import Mail, Message
+import random
+import uuid
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 import database as db
@@ -100,6 +103,15 @@ if not GEMINI_API_KEY:
     print("⚠️ WARNING: GEMINI_API_KEY not found in .env file!")
     
 genai.configure(api_key=GEMINI_API_KEY)
+
+# --- MAIL CONFIG ---
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS') == 'True'
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
+mail = Mail(app)
 
 # --- LOAD AI ---
 MODEL_PATH = os.path.join(os.getcwd(), "model_brain.h5")
@@ -360,6 +372,7 @@ def register():
             user = request.form['username']
             pw = request.form['password']
             caregiver_name = request.form['caregiver_name']
+            email = request.form['email']
             
             # Validation: Text Fields
             if len(user) < 4:
@@ -399,7 +412,7 @@ def register():
 
             status, report = analyze_birth_health(weight, apgar, head, chest)
             
-            if db.create_user(user, pw, caregiver_name):
+            if db.create_user(user, pw, caregiver_name, email):
                 # 1. Save Profile
                 db.save_full_profile(user, (b_name, dob, gender, blood, weight, height, head, chest, apgar, report, pic_filename))
                 
@@ -582,6 +595,79 @@ def vaccine():
     completed = db.get_completed_vaccines(session['user'])
     schedule, show_warning = get_vaccine_schedule(prof['dob'], completed)
     return render_template('vaccine.html', schedule=schedule, baby_name=prof['baby_name'], warning=show_warning)
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = db.get_user_by_email(email)
+        
+        if user:
+            # Generate 6-digit OTP
+            otp = str(random.randint(100000, 999999))
+            
+            # Use 'username' field if it exists, else fallback to '_id' (legacy support)
+            target_username = user.get('username', user['_id'])
+            
+            db.save_reset_otp(target_username, otp)
+            
+            # Send Email
+            msg = Message("Password Reset Code", recipients=[email])
+            msg.body = f"Your Verification Code is: {otp}\n\nThis code expires in 15 minutes."
+            
+            try:
+                mail.send(msg)
+                # Store username in session to know who is resetting
+                session['reset_user_id'] = target_username
+                flash("Code sent to your email!")
+                return redirect(url_for('verify_otp'))
+            except Exception as e:
+                print(f"Mail Error: {e}")
+                flash("Error sending email. Please try again.")
+        else:
+            flash("Email not found.")
+            
+    return render_template('forgot_password.html')
+
+@app.route('/verify-otp', methods=['GET', 'POST'])
+def verify_otp():
+    if 'reset_user_id' not in session:
+        return redirect(url_for('forgot_password'))
+        
+    if request.method == 'POST':
+        otp = request.form.get('otp')
+        username = session['reset_user_id']
+        
+        if db.verify_reset_otp(username, otp):
+            session['verified_for_reset'] = True
+            return redirect(url_for('reset_password'))
+        else:
+            flash("Invalid or expired code.")
+            
+    return render_template('verify_otp.html')
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    # Security check: Must have passed OTP verification
+    if not session.get('verified_for_reset'):
+        return redirect(url_for('login'))
+        
+    if request.method == 'POST':
+        new_password = request.form.get('password')
+        username = session.get('reset_user_id')
+        
+        if len(new_password) < 6:
+            flash("Password must be at least 6 characters.")
+        else:
+            db.update_password(username, new_password)
+            # Clear reset session vars
+            session.pop('reset_user_id', None)
+            session.pop('verified_for_reset', None)
+            
+            flash("Password updated! Please login.")
+            return redirect(url_for('login'))
+            
+    return render_template('reset_password.html')
 
 @app.route('/growth', methods=['GET', 'POST'])
 def growth():
@@ -1086,8 +1172,8 @@ def get_exercises(age):
         return exercises
     elif age < 6:
         return [
-            {"name": "Supported Sit", "desc": "Prop baby up with pillows or between your legs.", "benefit": "Core strength", "video_id": "wX1D_Vv69-A"},
-            {"name": "Reach & Grab", "desc": "Hold toy just out of reach to encourage extension.", "benefit": "Hand-eye coordination", "video_id": "W3t7c7s54bA"}
+            {"name": "Rolling: Tummy to Back", "desc": "Gently guide baby from tummy to back using a toy to lead their head.", "benefit": "Core strength & Coordination", "video_id": "F81VylqnzGE"},
+            {"name": "Tummy Time Play", "desc": "Use a mirror or high-contrast cards during tummy time.", "benefit": "Neck strength & reduces flat head", "video_id": "Q9oxTiUOXVY"}
         ]
     elif age < 9:
         return [
@@ -1096,8 +1182,8 @@ def get_exercises(age):
         ]
     else: # 9-12+
         return [
-            {"name": "Cruising", "desc": "Place toys on sofa to encourage standing and stepping sideways.", "benefit": "Leg strength for walking", "video_id": "Z-t3v_N-O6g"},
-            {"name": "Stacking Blocks", "desc": "Encourage baby to stack 2-3 blocks.", "benefit": "Fine motor skills", "video_id": "aG3m0iS1K80"}
+            {"name": "Cruising", "desc": "Place toys on sofa to encourage standing and stepping sideways.", "benefit": "Leg strength for walking", "video_id": "-V8PSjYCyAs"},
+            {"name": "Stacking Blocks", "desc": "Encourage baby to stack 2-3 blocks.", "benefit": "Fine motor skills", "video_id": "5sFRQRi7OMc"}
         ]
 
 def get_warning_signs():

@@ -233,6 +233,11 @@
             }
         }
 
+        function resetChecker() {
+            document.getElementById('check-result').classList.add('hidden');
+            document.getElementById('check-step-1').classList.remove('hidden');
+        }
+
         // DOSAGE CALCULATOR
         let currentMed = 'paracetamol';
         const weightInput = document.getElementById('calc-weight');
