@@ -1,4 +1,5 @@
 flask
+Flask-Mail
 python-dotenv
 numpy
 librosa
