@@ -104,7 +104,6 @@ function animate() {
             }
         }
     }
-
     requestAnimationFrame(animate);
 }
 
@@ -118,7 +117,6 @@ window.addEventListener('mouseleave', () => {
     mouseX = null;
     mouseY = null;
 });
-
 // Start
 resize();
 animate();
