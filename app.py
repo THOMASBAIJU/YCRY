@@ -479,7 +479,11 @@ def logout():
 
 @app.route('/cry', methods=['GET', 'POST'])
 def cry():
-    if 'user' not in session: return redirect(url_for('login'))
+    # Handle Session Expiry for AJAX
+    if 'user' not in session:
+        if request.method == 'POST':
+             return jsonify({"error": "Session expired. Please login again.", "redirect": url_for('login')}), 401
+        return redirect(url_for('login'))
     
     # Initialize variables for template rendering
     pred, conf, advice = None, 0, ""
@@ -580,7 +584,11 @@ def cry():
 
 @app.route('/vaccine', methods=['GET', 'POST'])
 def vaccine():
-    if 'user' not in session: return redirect(url_for('login'))
+    # Handle Session Expiry for AJAX
+    if 'user' not in session:
+        if request.method == 'POST':
+             return jsonify({"error": "Session expired.", "redirect": url_for('login')}), 401
+        return redirect(url_for('login'))
     prof = db.get_profile(session['user'])
     if not prof: return redirect(url_for('profile'))
     
@@ -671,7 +679,11 @@ def reset_password():
 
 @app.route('/growth', methods=['GET', 'POST'])
 def growth():
-    if 'user' not in session: return redirect(url_for('login'))
+    # Handle Session Expiry for AJAX
+    if 'user' not in session:
+        if request.method == 'POST':
+             return jsonify({"error": "Session expired.", "redirect": url_for('login')}), 401
+        return redirect(url_for('login'))
     
     prof = db.get_profile(session['user'])
     if not prof: return redirect(url_for('profile'))
@@ -1197,4 +1209,4 @@ def get_warning_signs():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=True, threaded=False)

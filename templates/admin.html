@@ -30,7 +30,7 @@
                 </thead>
                 <tbody class="text-warm-dark">
                     {% for u in users %}
-                    <tr id="user-row-{{ u._id }}" class="border-b border-warm-cream hover:bg-white/40 transition duration-200">
+                    <tr id="user-row-{{ u.username }}" class="border-b border-warm-cream hover:bg-white/40 transition duration-200">
                         <td class="py-4 px-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-warm-teal/20 flex items-center justify-center text-warm-teal font-bold border-2 border-white shadow-sm">
@@ -38,7 +38,7 @@
                                 </div>
                                 <div>
                                     <p class="font-bold text-lg">{{ u.caregiver_name }}</p>
-                                    <p class="text-xs text-warm-gray">{{ u._id }}</p>
+                                    <p class="text-xs text-warm-gray">@{{ u.username }}</p>
                                 </div>
                             </div>
                         </td>
@@ -54,8 +54,8 @@
                             {% endif %}
                         </td>
                         <td class="py-4 px-4 text-center">
-                            {% if u._id != session['user'] %}
-                            <button onclick="deleteUser('{{ u._id }}')" 
+                            {% if u.username != session['user'] %}
+                            <button onclick="deleteUser('{{ u.username }}')" 
                                     class="text-warm-gray hover:text-red-600 transition p-2 rounded-full hover:bg-red-50"
                                     title="Delete User">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
