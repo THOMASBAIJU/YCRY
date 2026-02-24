@@ -44,8 +44,8 @@
                      class="w-full max-w-md mx-auto h-auto rounded-[3rem] shadow-2xl mask-squircle-ish border-4 border-white/50 object-cover aspect-[4/5]">
                 
                 <!-- Floating Badge -->
-                <a href="/vaccine" class="absolute -bottom-10 -left-10 glass-premium p-4 flex items-center gap-4 animate-float-delayed z-20 max-w-xs transition-colors duration-500 cursor-pointer hover:scale-105
-                            {% if vaccine_alert.type == 'danger' %} border-l-4 border-red-500 bg-red-50/90 {% endif %}">
+                <a href="/vaccine" class="absolute -bottom-10 -left-10 glass-premium rounded-[2.5rem] p-4 flex items-center gap-4 animate-float-delayed z-20 max-w-xs transition-colors duration-500 cursor-pointer hover:scale-105
+                            {% if vaccine_alert.type == 'danger' %} border-l-4 border-red-500 bg-red-500/10 {% endif %}">
                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-sm
                                 {% if vaccine_alert.type == 'danger' %} bg-red-100 text-red-500 animate-pulse {% else %} bg-green-100 text-green-600 {% endif %}">
                         {{ vaccine_alert.icon }}
@@ -67,98 +67,30 @@
             <p class="text-warm-gray max-w-2xl mx-auto">From decoding cries to tracking milestones, YCRY acts as your digital parenting assistant.</p>
         </div>
 
+        {% set features = [
+            {'url': '/assistant', 'img': 'ai_feature.png', 'delay': '50', 'hover': 'text-warm-teal', 'title': 'Dr. YCRY', 'desc': '24/7 Pediatric advice, growth analysis, and medical reminders.'},
+            {'url': '/cry', 'img': 'cry_feature.png', 'delay': '100', 'hover': 'text-warm-teal', 'title': 'Cry Translator', 'desc': 'AI analysis to understand if your baby is hungry, in pain, or just tired.'},
+            {'url': '/vaccine', 'img': 'vaccine_feature.png', 'delay': '200', 'hover': 'text-warm-teal', 'title': 'Vaccine Tracker', 'desc': 'Never miss a shot. Track immunization schedules and get timely alerts.'},
+            {'url': '/growth', 'img': 'growth_feature.png', 'delay': '300', 'hover': 'text-warm-teal', 'title': 'Growth Journey', 'desc': 'Monitor height, weight, and cognitive milestones as your little one grows.'},
+            {'url': '/nutrition', 'img': 'nutrition_feature.png', 'delay': '400', 'hover': 'text-warm-teal', 'title': 'Nutrition Guide', 'desc': 'Age-appropriate feeding schedules and food recommendations.'},
+            {'url': '/exercises', 'img': 'exercises_feature.png', 'delay': '500', 'hover': 'text-warm-teal', 'title': 'Baby Gym', 'desc': 'Fun developmental activities to boost motor skills.'},
+            {'url': '/health', 'img': 'health_feature.png', 'delay': '600', 'hover': 'text-warm-coral', 'title': 'Health Check', 'desc': 'Identify warning signs and know when to seek help.'}
+        ] %}
+
         <div class="grid md:grid-cols-3 gap-8">
-            <!-- Feature: AI Assistant (New) -->
-            <a href="/assistant" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="50">
-                <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
-                    <img src="{{ url_for('static', filename='images/ai_feature.png') }}" 
-                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="AI Doctor">
+            {% for f in features %}
+            <a href="{{ f.url }}" class="group glass-premium rounded-[2.5rem] p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="{{ f.delay }}">
+                <div class="overflow-hidden rounded-[2rem] mb-6 relative h-48">
+                    <img src="{{ url_for('static', filename='images/' + f.img) }}" 
+                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="{{ f.title }}">
                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 </div>
                 <div class="px-4 pb-4">
-                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Dr. YCRY</h3>
-                    <p class="text-warm-gray text-sm leading-relaxed">24/7 Pediatric advice, growth analysis, and medical reminders.</p>
+                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:{{ f.hover }} transition-colors">{{ f.title }}</h3>
+                    <p class="text-warm-gray text-sm leading-relaxed">{{ f.desc }}</p>
                 </div>
             </a>
-            <!-- Feature 1 -->
-            <a href="/cry" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="100">
-                <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
-                    <img src="{{ url_for('static', filename='images/cry_feature.png') }}" 
-                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Crying Baby">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-
-                </div>
-                <div class="px-4 pb-4">
-                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Cry Translator</h3>
-                    <p class="text-warm-gray text-sm leading-relaxed">AI analysis to understand if your baby is hungry, in pain, or just tired.</p>
-                </div>
-            </a>
-
-            <!-- Feature 2 -->
-            <a href="/vaccine" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="200">
-                <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
-                    <img src="{{ url_for('static', filename='images/vaccine_feature.png') }}" 
-                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Vaccine">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                 
-                </div>
-                <div class="px-4 pb-4">
-                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Vaccine Tracker</h3>
-                    <p class="text-warm-gray text-sm leading-relaxed">Never miss a shot. Track immunization schedules and get timely alerts.</p>
-                </div>
-            </a>
-
-            <!-- Feature 3 -->
-            <a href="/growth" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="300">
-                <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
-                    <img src="{{ url_for('static', filename='images/growth_feature.png') }}" 
-                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Growth">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                </div>
-                <div class="px-4 pb-4">
-                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Growth Journey</h3>
-                    <p class="text-warm-gray text-sm leading-relaxed">Monitor height, weight, and cognitive milestones as your little one grows.</p>
-                </div>
-            </a>
-
-            <!-- Feature 4: Nutrition -->
-            <a href="/nutrition" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="400">
-                <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
-                    <img src="{{ url_for('static', filename='images/nutrition_feature.png') }}" 
-                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Nutrition">
-                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                </div>
-                <div class="px-4 pb-4">
-                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Nutrition Guide</h3>
-                    <p class="text-warm-gray text-sm leading-relaxed">Age-appropriate feeding schedules and food recommendations.</p>
-                </div>
-            </a>
-
-            <!-- Feature 5: Exercises -->
-            <a href="/exercises" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="500">
-                 <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
-                     <img src="{{ url_for('static', filename='images/exercises_feature.png') }}" 
-                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Gym">
-                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                </div>
-                <div class="px-4 pb-4">
-                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-teal transition-colors">Baby Gym</h3>
-                    <p class="text-warm-gray text-sm leading-relaxed">Fun developmental activities to boost motor skills.</p>
-                </div>
-            </a>
-
-            <!-- Feature 6: Health -->
-            <a href="/health" class="group glass-premium p-2 hover:bg-white/80 transition-all duration-500" data-aos="fade-up" data-aos-delay="600">
-                 <div class="overflow-hidden rounded-[1.5rem] mb-6 relative h-48">
-                     <img src="{{ url_for('static', filename='images/health_feature.png') }}" 
-                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" alt="Health">
-                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                </div>
-                <div class="px-4 pb-4">
-                    <h3 class="text-xl font-bold text-warm-dark mb-2 group-hover:text-warm-coral transition-colors">Health Check</h3>
-                    <p class="text-warm-gray text-sm leading-relaxed">Identify warning signs and know when to seek help.</p>
-                </div>
-            </a>
+            {% endfor %}
         </div>
     </div>
 

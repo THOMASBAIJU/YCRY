@@ -19,7 +19,7 @@
     <div class="grid md:grid-cols-2 gap-8 items-stretch">
         
         <!-- Recorder / Upload Card -->
-        <div class="glass-premium p-8 pb-32 relative" data-aos="fade-right">
+        <div class="glass-premium rounded-[2.5rem] p-8 pb-32 relative" data-aos="fade-right">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-warm-teal to-transparent"></div>
             
             <h2 class="text-xl font-bold text-warm-dark mb-6 flex items-center gap-2">
@@ -40,8 +40,9 @@
                     
                     <!-- File Upload Mode -->
                     <div id="mode-upload" class="absolute inset-0 w-full h-full">
+                         <label class="label-premium sr-only" for="fileInput">Upload Audio</label>
                          <input type="file" name="audio" id="fileInput" accept=".wav,.mp3,.3gp,.m4a,.webm" 
-                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                               class="input-premium absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                                onchange="updateFileName()">
                         
                         <div class="border-2 border-dashed border-warm-teal/30 rounded-2xl h-full flex flex-col items-center justify-center bg-white/40 group-hover:bg-teal-50/50 group-hover:border-warm-teal transition-all duration-300 relative overflow-hidden">
@@ -88,7 +89,7 @@
         </div>
 
         <!-- Results Card -->
-        <div id="result-container" class="glass-premium p-8 bg-gradient-to-b from-white/70 to-white/40" data-aos="fade-left">
+        <div id="result-container" class="glass-premium rounded-[2.5rem] p-8 bg-gradient-to-b from-white/70 to-white/40" data-aos="fade-left">
              <h2 class="text-xl font-bold text-warm-dark mb-6 flex items-center gap-2">
                 <span class="w-8 h-8 rounded-full bg-warm-yellow text-white flex items-center justify-center text-sm shadow-md">2</span>
                 Analysis Results
@@ -125,219 +126,5 @@
     </div>
 </div>
 
-<script>
-    // --- UI & AJAX Logic ---
-    function updateFileName() {
-        const input = document.getElementById('fileInput');
-        const display = document.getElementById('fileNameDisplay');
-        const previewContainer = document.getElementById('audio-preview-container');
-        const audioPreview = document.getElementById('audio-preview');
-
-        if (input.files.length > 0) {
-            display.innerHTML = '<span class="text-warm-teal">✅ Ready:</span> <br>' + input.files[0].name;
-            
-            // Set Audio Preview
-            const fileURL = URL.createObjectURL(input.files[0]);
-            audioPreview.src = fileURL;
-            previewContainer.classList.remove('hidden');
-        }
-    }
-
-    const form = document.querySelector('form');
-    const resultContainer = document.getElementById('result-container');
-    const resultContent = document.getElementById('result-content');
-    const resultContentEmpty = document.getElementById('result-content-empty');
-
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const fileInput = document.getElementById('fileInput');
-        if (fileInput.files.length === 0) {
-            showToast("⚠️ Please upload a file or record audio first!", 'error');
-            return;
-        }
-
-        // Show Loading State
-        const btn = form.querySelector('button[type="submit"]');
-        const originalBtnContent = btn.innerHTML;
-        btn.innerHTML = '<span class="animate-spin inline-block mr-2">⏳</span> Analyzing...';
-        btn.disabled = true;
-
-        const formData = new FormData(form);
-
-        try {
-            const response = await fetch('/cry', {
-                method: 'POST',
-                body: formData
-            });
-
-            const text = await response.text();
-            let data;
-            
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                console.error("Server Response (Not JSON):", text);
-                // Extract error message from HTML if possible, or show snippet
-                let msg = "Server returned non-JSON response.";
-                if (text.includes("<title>")) {
-                    const matches = text.match(/<title>(.*?)<\/title>/);
-                    if (matches) msg += " Title: " + matches[1];
-                } else {
-                    msg += " Preview: " + text.substring(0, 50) + "...";
-                }
-                showToast("Server Error: " + msg, 'error');
-                return;
-            }
-
-            if (data.redirect) {
-                window.location.href = data.redirect;
-                return;
-            }
-
-            if (data.error) {
-                showToast("Error: " + data.error, 'error');
-            } else if (data.success) {
-                // Update UI with Results
-                resultContentEmpty.classList.add('hidden');
-                resultContent.classList.remove('hidden');
-
-                // Map Prediction to Icon
-                const icons = {
-                    "Hunger": "🍼",
-                    "Pain": "🩹",
-                    "Burping": "🫧",
-                    "Discomfort": "🧸",
-                    "Tired": "🌙"
-                };
-                const icon = icons[data.prediction] || "👶";
-
-                document.getElementById('res-icon').innerText = icon;
-                document.getElementById('res-pred').innerText = data.prediction;
-                document.getElementById('res-conf').innerText = data.confidence + "%";
-                document.getElementById('res-advice').innerText = data.advice;
-
-                // Scroll to results using Lenis if available, or native
-                if (typeof lenis !== 'undefined') {
-                    lenis.scrollTo('#result-container', { offset: -100 });
-                } else {
-                    resultContainer.scrollIntoView({ behavior: 'smooth' });
-                }
-            }
-
-        } catch (error) {
-            console.error("Error:", error);
-            showToast("Network/Client Error: " + error.message, 'error');
-        } finally {
-            // Reset Button
-            btn.innerHTML = originalBtnContent;
-            btn.disabled = false;
-        }
-    });
-
-
-    // --- Recording Logic ---
-    let mediaRecorder;
-    let audioChunks = [];
-    let isRecording = false;
-    let timerInterval;
-    let startTime;
-
-    function setMode(mode) {
-        // Toggle UI
-        const uploadDiv = document.getElementById('mode-upload');
-        const recordDiv = document.getElementById('mode-record');
-        const btnUpload = document.getElementById('btn-mode-upload');
-        const btnRecord = document.getElementById('btn-mode-record');
-
-        if (mode === 'upload') {
-            uploadDiv.classList.remove('hidden');
-            recordDiv.classList.add('hidden');
-            
-            btnUpload.className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-warm-teal";
-            btnRecord.className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all text-warm-gray hover:bg-white/50";
-        } else {
-            uploadDiv.classList.add('hidden');
-            recordDiv.classList.remove('hidden');
-
-            btnRecord.className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-warm-teal";
-            btnUpload.className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all text-warm-gray hover:bg-white/50";
-        }
-    }
-
-    async function toggleRecording() {
-        const btn = document.getElementById('recordBtn');
-        const status = document.getElementById('recordStatus');
-        const visual = document.getElementById('recording-visual');
-        const timer = document.getElementById('timer');
-
-        if (!isRecording) {
-            // START Recording
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const options = { mimeType: 'audio/webm' };
-                mediaRecorder = new MediaRecorder(stream, options);
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const audioFile = new File([audioBlob], "recorded_cry.webm", { type: "audio/webm" });
-                    
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(audioFile);
-                    document.getElementById('fileInput').files = dataTransfer.files;
-
-                    status.innerHTML = "<span class='text-warm-teal'>✅ Recorded!</span> Click Analyze Below";
-                    btn.classList.remove('animate-pulse');
-                    visual.classList.add('hidden');
-                    clearInterval(timerInterval);
-
-                    // Set Audio Preview
-                    const audioURL = URL.createObjectURL(audioBlob);
-                    const audioPreview = document.getElementById('audio-preview');
-                    const previewContainer = document.getElementById('audio-preview-container');
-                    audioPreview.src = audioURL;
-                    previewContainer.classList.remove('hidden');
-                };
-
-                mediaRecorder.start();
-                isRecording = true;
-                
-                btn.innerHTML = "⬛"; 
-                btn.classList.add('animate-pulse', 'bg-warm-dark');
-                btn.classList.remove('bg-red-500');
-                status.innerText = "Recording...";
-                visual.classList.remove('hidden');
-                timer.classList.remove('hidden');
-                
-                startTime = Date.now();
-                timerInterval = setInterval(() => {
-                    const diff =  Date.now() - startTime;
-                    const secs = Math.floor(diff / 1000);
-                    const mins = Math.floor(secs / 60);
-                    timer.innerText = `${mins.toString().padStart(2, '0')}:${(secs%60).toString().padStart(2, '0')}`;
-                }, 1000);
-
-            } catch (err) {
-                console.error("Mic Error:", err);
-                showToast("Could not access microphone: " + err.message, 'error');
-            }
-        } else {
-            // STOP Recording
-            mediaRecorder.stop();
-            isRecording = false;
-
-            btn.innerHTML = "🎙️";
-            btn.classList.remove('animate-pulse', 'bg-warm-dark');
-            btn.classList.add('bg-red-500');
-            timer.classList.add('hidden');
-            
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
-        }
-    }
-</script>
+<script src="{{ url_for('static', filename='js/cry_analysis.js') }}"></script>
 {% endblock %}
