@@ -77,13 +77,46 @@
         </div>
     </div>
 </div>
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform scale-95 transition-all">
+            <h3 class="font-bold text-xl text-warm-dark mb-2">Remove User?</h3>
+            <p class="text-gray-600 mb-6" id="deleteModalText">Are you sure you want to PERMANENTLY delete this user? This action cannot be undone.</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 rounded-lg font-bold text-gray-500 hover:bg-gray-100 transition">Cancel</button>
+                <button id="confirmDeleteBtn" class="px-4 py-2 rounded-lg font-bold bg-red-100 text-red-600 hover:bg-red-200 transition">Yes, Remove</button>
+            </div>
+        </div>
+    </div>
 
 <script>
-async function deleteUser(username) {
-    if (!confirm(`Are you sure you want to PERMANENTLY delete user "${username}"? This action cannot be undone.`)) {
-        return;
-    }
+let userToDelete = null;
 
+function deleteUser(username) {
+    userToDelete = username;
+    const modal = document.getElementById('deleteModal');
+    const text = document.getElementById('deleteModalText');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    
+    // Using string interpolation securely by assigning textContent
+    text.textContent = `Are you sure you want to PERMANENTLY delete user "@${username}"? This action cannot be undone.`;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    
+    // Re-bind confirm click
+    confirmBtn.onclick = function() {
+        performDelete(userToDelete);
+        closeDeleteModal();
+    };
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+    userToDelete = null;
+}
+
+async function performDelete(username) {
     try {
         const response = await fetch(`/admin/delete/${username}`, {
             method: 'POST',
@@ -95,7 +128,7 @@ async function deleteUser(username) {
         const data = await response.json();
         
         if (data.success) {
-            showToast(`User "${username}" deleted successfully.`, 'success');
+            showToast(`User "@${username}" deleted successfully.`, 'success');
             
             // Remove row from DOM
             const row = document.getElementById(`user-row-${username}`);
