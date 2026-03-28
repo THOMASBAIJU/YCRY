@@ -1,3 +1,4 @@
+import os
 import database as db
 import pymongo
 
@@ -17,7 +18,10 @@ def reset_and_seed():
     
     # Create Admin
     username = "admin"
-    password = "123456"
+    password = os.getenv("ADMIN_PASSWORD", "")
+    if not password:
+        print("❌ ADMIN_PASSWORD environment variable is not set. Aborting.")
+        return
     name = "System Administrator"
     email = "admin@ycry.com"
     
