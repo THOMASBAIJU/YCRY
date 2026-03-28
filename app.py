@@ -12,6 +12,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_mail import Mail, Message
 import random
 import uuid
+import traceback
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 import database as db
@@ -20,7 +21,9 @@ import google.generativeai as genai
 import threading
 import json
 app = Flask(__name__)
-app.secret_key = os.urandom(24) # Random key = Logout on server restart
+app.secret_key = os.getenv('SECRET_KEY') or os.urandom(24)
+if not os.getenv('SECRET_KEY'):
+    print("⚠️ WARNING: SECRET_KEY not set in .env — sessions will reset on server restart!")
 # Reload Trigger: 2
 
 # --- STATIC RECIPES ---
@@ -86,17 +89,14 @@ STATIC_RECIPES = {
 PROFILE_FOLDER = 'static/profile_pics'
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['PROFILE_FOLDER'] = PROFILE_FOLDER
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PROFILE_FOLDER'], exist_ok=True)
-os.environ["PATH"] += os.pathsep + r"C:\ffmpeg\bin"
 
 db.init_db()
 
 # --- LOAD AI ---
-# --- CONFIG AI ---
-from dotenv import load_dotenv
-load_dotenv() # Load environment variables
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
@@ -406,8 +406,12 @@ def register():
             if 'baby_pic' in request.files:
                 file = request.files['baby_pic']
                 if file.filename != '':
-                    ext = file.filename.split('.')[-1]
-                    pic_filename = f"{user}_profile.{ext}"
+                    parts = file.filename.rsplit('.', 1)
+                    if len(parts) != 2 or parts[1].lower() not in ALLOWED_IMAGE_EXTENSIONS:
+                        flash("Error: Only image files (jpg, jpeg, png, gif, webp) are allowed.")
+                        return render_template('register.html')
+                    ext = parts[1].lower()
+                    pic_filename = f"{secure_filename(user)}_profile.{ext}"
                     file.save(os.path.join(app.config['PROFILE_FOLDER'], pic_filename))
 
             status, report = analyze_birth_health(weight, apgar, head, chest)
@@ -456,8 +460,11 @@ def profile():
             if 'baby_pic' in request.files:
                 file = request.files['baby_pic']
                 if file.filename != '':
-                    ext = file.filename.split('.')[-1]
-                    pic_filename = f"{session['user']}_profile.{ext}"
+                    parts = file.filename.rsplit('.', 1)
+                    if len(parts) != 2 or parts[1].lower() not in ALLOWED_IMAGE_EXTENSIONS:
+                        return jsonify({"success": False, "message": "Error: Only image files (jpg, jpeg, png, gif, webp) are allowed."}), 400
+                    ext = parts[1].lower()
+                    pic_filename = f"{secure_filename(session['user'])}_profile.{ext}"
                     file.save(os.path.join(app.config['PROFILE_FOLDER'], pic_filename))
 
             status, report = analyze_birth_health(weight, apgar, head, chest)
@@ -491,7 +498,6 @@ def cry():
     print(f"🔍 CRY ROUTE ACCESSED. AI_MODEL STATUS: {ai_model}")
 
     if request.method == 'POST':
-        import traceback
         try:
             # Check for file
             if 'audio' not in request.files:
@@ -503,7 +509,6 @@ def cry():
 
             if f:
                 # Save file
-                import uuid
                 unique_id = str(uuid.uuid4())
                 audio_filename = f"temp_{unique_id}.wav"
                 img_filename = f"temp_spec_{unique_id}.png"
