@@ -1,6 +1,5 @@
 import os
 import sys
-os.environ["PATH"] += os.pathsep + r"C:\ffmpeg\bin"
 
 import numpy as np
 import librosa

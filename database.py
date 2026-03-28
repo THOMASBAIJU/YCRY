@@ -1,4 +1,5 @@
 import datetime
+import hmac
 import bcrypt
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
@@ -23,8 +24,7 @@ def init_db():
         client = MongoClient(MONGO_URI, 
                              tlsCAFile=certifi.where(), 
                              serverSelectionTimeoutMS=20000,
-                             connectTimeoutMS=20000,
-                             tlsAllowInvalidCertificates=True)
+                             connectTimeoutMS=20000)
         db = client[DB_NAME]
         # Quick check
         client.admin.command('ping')
@@ -167,7 +167,7 @@ def verify_reset_otp(username, otp):
         saved_otp = user.get("reset_otp")
         expiry = user.get("reset_otp_expiry")
 
-        if saved_otp == otp and expiry and expiry > datetime.datetime.now():
+        if saved_otp and hmac.compare_digest(str(saved_otp), str(otp)) and expiry and expiry > datetime.datetime.now():
             return True
         return False
     except Exception as e:
