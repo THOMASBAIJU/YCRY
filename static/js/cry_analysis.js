@@ -6,7 +6,6 @@ function updateFileName() {
     const audioPreview = document.getElementById('audio-preview');
 
     if (input.files.length > 0) {
-        // Fix for Kluster Issue 3: Use textContent to prevent XSS
         display.innerHTML = '<span class="text-warm-teal">✅ Ready:</span> <br><span id="safe-filename"></span>';
         document.getElementById('safe-filename').textContent = input.files[0].name;
 
@@ -20,6 +19,24 @@ function updateFileName() {
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('cry-analysis-form');
     if (!form) return;
+
+    async function postCryAnalysis(formData, retries = 1) {
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                return await fetch('/cry', {
+                    method: 'POST',
+                    body: formData
+                });
+            } catch (err) {
+                const isLastAttempt = attempt === retries;
+                if (isLastAttempt) {
+                    throw err;
+                }
+                // Small delay allows backend cold-start/warmup to complete.
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+        }
+    }
 
     const resultContainer = document.getElementById('result-container');
     const resultContent = document.getElementById('result-content');
@@ -43,10 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
 
         try {
-            const response = await fetch('/cry', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await postCryAnalysis(formData, 1);
 
             const text = await response.text();
             let data;
@@ -111,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Determine Supported MIME Type dynamically (Fix for Kluster Issue 4)
     function getSupportedMimeType() {
         const types = [
             'audio/webm',

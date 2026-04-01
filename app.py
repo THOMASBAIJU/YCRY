@@ -13,8 +13,8 @@ from flask_mail import Mail, Message
 import random
 import uuid
 import traceback
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
+from keras.models import load_model
+from keras.utils import img_to_array, load_img
 import database as db
 from werkzeug.utils import secure_filename
 import google.generativeai as genai
@@ -118,6 +118,26 @@ MODEL_PATH = os.path.join(os.getcwd(), "model_brain.h5")
 ai_model = None
 plot_lock = threading.Lock()
 
+def warmup_cry_pipeline():
+    """Warm up librosa + matplotlib to avoid first-request latency spikes."""
+    try:
+        print("⏳ Warming up cry audio pipeline...")
+        sr = 22050
+        y = np.zeros(sr, dtype=np.float32)
+        mel = librosa.feature.melspectrogram(y=y, sr=sr)
+        librosa.power_to_db(mel, ref=np.max)
+
+        with plot_lock:
+            fig = plt.figure(figsize=(2, 2))
+            librosa.display.specshow(librosa.power_to_db(mel, ref=np.max), sr=sr)
+            plt.axis('off')
+            plt.close(fig)
+            plt.close('all')
+
+        print("🔥 Cry audio pipeline warmed up")
+    except Exception as e:
+        print(f"⚠️ Cry pipeline warmup failed: {e}")
+
 print(f"🔍 Checking Model Path: {MODEL_PATH}")
 if os.path.exists(MODEL_PATH):
     print("✅ File Found. Attempting load...")
@@ -140,6 +160,8 @@ if os.path.exists(MODEL_PATH):
         traceback.print_exc()
 else:
     print("❌ Model File NOT FOUND at path!")
+
+warmup_cry_pipeline()
 
 # --- HELPERS ---
 def calculate_age(dob_str):
@@ -549,7 +571,7 @@ def cry():
                 # AI Prediction
                 if ai_model:
                     try:
-                        img = image.img_to_array(image.load_img(img_path, target_size=(64, 64))) / 255.0
+                        img = img_to_array(load_img(img_path, target_size=(64, 64))) / 255.0
                         probs = ai_model.predict(np.expand_dims(img, axis=0), verbose=0)[0]
                         classes = ["Burping", "Discomfort", "Hunger", "Pain", "Tired"]
                         
